@@ -5,6 +5,7 @@ mod terminal;
 use config::{Config, DevConfig};
 use sphinx::{create_sphinx_manager, SharedSphinxManager};
 use tauri::State;
+use tauri_plugin_opener::OpenerExt;
 use terminal::{create_terminal_manager, SharedTerminalManager};
 
 /// PTYセッションを生成
@@ -110,6 +111,15 @@ fn get_sphinx_port(
     Ok(inner.get_port(&session_id))
 }
 
+/// ブラウザでURLを開く
+#[tauri::command]
+fn open_in_browser(url: String, app_handle: tauri::AppHandle) -> Result<(), String> {
+    app_handle
+        .opener()
+        .open_url(&url, None::<&str>)
+        .map_err(|e| e.to_string())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let terminal_manager = create_terminal_manager();
@@ -130,6 +140,7 @@ pub fn run() {
             start_sphinx,
             stop_sphinx,
             get_sphinx_port,
+            open_in_browser,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
