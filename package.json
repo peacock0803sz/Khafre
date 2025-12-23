@@ -13,7 +13,9 @@
     "lint": "oxlint app/",
     "lint:fix": "oxlint --fix app/",
     "format": "oxfmt --write .",
-    "format:check": "oxfmt --check ."
+    "format:check": "oxfmt --check .",
+    "test": "vitest",
+    "test:run": "vitest run"
   },
   "dependencies": {
     "@tauri-apps/api": "^2",
@@ -31,11 +33,13 @@
     "@types/react-dom": "^19.1.6",
     "@vitejs/plugin-react": "^4.6.0",
     "autoprefixer": "^10.4.23",
+    "jsdom": "^27.3.0",
     "oxfmt": "^0.20.0",
     "oxlint": "^1.35.0",
     "postcss": "^8.5.6",
     "tailwindcss": "^4.1.18",
     "typescript": "~5.8.3",
-    "vite": "^7.0.4"
+    "vite": "^7.0.4",
+    "vitest": "^4.0.16"
   }
 }
