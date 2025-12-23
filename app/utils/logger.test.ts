@@ -16,12 +16,10 @@ describe("logger", () => {
 
   describe("in development mode", () => {
     beforeEach(() => {
-      // @ts-expect-error DEV is readonly
       import.meta.env.DEV = true;
     });
 
     afterEach(() => {
-      // @ts-expect-error DEV is readonly
       import.meta.env.DEV = originalEnv;
     });
 
@@ -48,12 +46,10 @@ describe("logger", () => {
 
   describe("in production mode", () => {
     beforeEach(() => {
-      // @ts-expect-error DEV is readonly
       import.meta.env.DEV = false;
     });
 
     afterEach(() => {
-      // @ts-expect-error DEV is readonly
       import.meta.env.DEV = originalEnv;
     });
 
