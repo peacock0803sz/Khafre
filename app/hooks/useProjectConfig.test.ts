@@ -66,10 +66,9 @@ describe("useProjectConfig", () => {
   it("should reload config when projectPath changes", async () => {
     vi.mocked(invoke).mockResolvedValue(mockConfig);
 
-    const { result, rerender } = renderHook(
-      ({ path }) => useProjectConfig(path),
-      { initialProps: { path: "/first/path" } }
-    );
+    const { result, rerender } = renderHook(({ path }) => useProjectConfig(path), {
+      initialProps: { path: "/first/path" },
+    });
 
     await waitFor(() => {
       expect(result.current.loading).toBe(false);
@@ -111,10 +110,9 @@ describe("useProjectConfig", () => {
   it("should clear config when projectPath becomes null", async () => {
     vi.mocked(invoke).mockResolvedValue(mockConfig);
 
-    const { result, rerender } = renderHook(
-      ({ path }) => useProjectConfig(path),
-      { initialProps: { path: "/path/to/project" as string | null } }
-    );
+    const { result, rerender } = renderHook(({ path }) => useProjectConfig(path), {
+      initialProps: { path: "/path/to/project" as string | null },
+    });
 
     await waitFor(() => {
       expect(result.current.config).toEqual(mockConfig);
