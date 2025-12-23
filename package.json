@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "tauri": "tauri -c ./back/tauri.conf.json"
+    "tauri:dev": "tauri dev --config ./back/tauri.conf.json",
+    "tauri:build": "tauri build --config ./back/tauri.conf.json"
   },
   "dependencies": {
     "@tauri-apps/api": "^2",
@@ -16,6 +17,7 @@
     "react-dom": "^19.1.0"
   },
   "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.18",
     "@tauri-apps/cli": "^2",
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
