@@ -7,6 +7,9 @@
 source_dir = "docs"
 # Build output directory relative to project root
 build_dir = "_build/html"
+# Additional arguments to pass to sphinx-autobuild
+# Example: ["--watch", "src", "--ignore", "*.pyc"]
+extra_args = []
 
 [sphinx.server]
 # Port for sphinx-autobuild (0 = auto-assign)

@@ -4,7 +4,8 @@
   "config": {
     "sphinx": {
       "source_dir": "docs",
-      "build_dir": "_build/html"
+      "build_dir": "_build/html",
+      "extra_args": ["--watch", "src"]
     },
     "python": {
       "interpreter": ".venv/bin/python"
