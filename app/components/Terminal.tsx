@@ -125,8 +125,8 @@ export function Terminal({ sessionId, cwd, onExit }: TerminalProps) {
       // PTYセッション終了
       invoke("kill_terminal", { sessionId }).catch(console.error);
     };
-  // cwdは初回spawnのみ使用、変更時の再spawnは不要
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // cwdは初回spawnのみ使用、変更時の再spawnは不要
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId]);
 
   return (

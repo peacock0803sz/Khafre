@@ -75,7 +75,9 @@ function App() {
         <div className="flex items-center gap-4">
           {configLoading && <span className="text-yellow-400 text-xs">Loading...</span>}
           {sphinxRunning && <span className="text-green-400 text-xs">Preview Running</span>}
-          {sphinxError && <span className="text-red-400 text-xs truncate max-w-xs">{sphinxError}</span>}
+          {sphinxError && (
+            <span className="text-red-400 text-xs truncate max-w-xs">{sphinxError}</span>
+          )}
           {sphinxRunning ? (
             <button
               onClick={stopSphinx}
