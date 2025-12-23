@@ -1,5 +1,7 @@
+mod config;
 mod terminal;
 
+use config::Config;
 use tauri::State;
 use terminal::{create_terminal_manager, SharedTerminalManager};
 
@@ -50,6 +52,13 @@ fn kill_terminal(
     inner.kill(&session_id)
 }
 
+/// プロジェクト設定を読み込む
+#[tauri::command]
+fn load_project_config(path: String) -> Result<Config, String> {
+    let project_path = std::path::Path::new(&path);
+    Config::load(project_path)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let terminal_manager = create_terminal_manager();
@@ -62,6 +71,7 @@ pub fn run() {
             pty_write,
             pty_resize,
             kill_terminal,
+            load_project_config,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
