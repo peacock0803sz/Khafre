@@ -9,6 +9,7 @@
     "preview": "vite preview",
     "tauri:dev": "tauri dev --config ./back/tauri.conf.json",
     "tauri:build": "tauri build --config ./back/tauri.conf.json",
+    "typecheck": "tsc --noEmit",
     "lint": "oxlint .",
     "lint:fix": "oxlint --fix .",
     "format": "oxfmt --write .",
