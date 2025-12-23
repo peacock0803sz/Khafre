@@ -1,4 +1,13 @@
 {
   "projectPath": "/path/to/your/sphinx/project",
-  "autoStartSphinx": true
+  "autoStartSphinx": true,
+  "config": {
+    "sphinx": {
+      "source_dir": "docs",
+      "build_dir": "_build/html"
+    },
+    "python": {
+      "interpreter": ".venv/bin/python"
+    }
+  }
 }
