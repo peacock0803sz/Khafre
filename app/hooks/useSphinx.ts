@@ -15,6 +15,7 @@ interface UseSphinxResult {
   error: string | null;
   start: () => Promise<void>;
   stop: () => Promise<void>;
+  openInBrowser: () => Promise<void>;
 }
 
 /**
@@ -62,6 +63,16 @@ export function useSphinx({ sessionId, projectPath, config }: UseSphinxOptions):
       setError(String(e));
     }
   }, [sessionId]);
+
+  const openInBrowser = useCallback(async () => {
+    if (previewUrl) {
+      try {
+        await invoke("open_in_browser", { url: previewUrl });
+      } catch (e) {
+        setError(String(e));
+      }
+    }
+  }, [previewUrl]);
 
   // Sphinxイベントをリッスン
   useEffect(() => {
@@ -111,5 +122,5 @@ export function useSphinx({ sessionId, projectPath, config }: UseSphinxOptions):
     };
   }, [sessionId]);
 
-  return { previewUrl, isRunning, error, start, stop };
+  return { previewUrl, isRunning, error, start, stop, openInBrowser };
 }
