@@ -1,0 +1,34 @@
+name: "Check and Build Rust backend"
+on:
+  pull_request:
+    paths:
+      - "back/**"
+      - "!.github/**"
+      - ".github/workflows/ci-back.yml"
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+        working-directory: back
+    steps:
+      - uses: actions/checkout@v6
+
+      - run: npm ci
+
+      - name: Setup rust
+        run: |
+          rustup update stable
+          rustup default stable
+
+      - name: Check and Build backend
+        run: |
+          cargo fmt --check
+          cargo clippy -- -D warnings
+          cargo test
+          cargo build
