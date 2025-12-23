@@ -128,10 +128,6 @@ export function Terminal({ sessionId, cwd, onExit }: TerminalProps) {
   }, [sessionId, cwd, sendData, handleResize, onExit]);
 
   return (
-    <div
-      ref={containerRef}
-      className="w-full h-full"
-      style={{ backgroundColor: "#1e1e1e" }}
-    />
+    <div ref={containerRef} className="w-full h-full" style={{ backgroundColor: "#1e1e1e" }} />
   );
 }
