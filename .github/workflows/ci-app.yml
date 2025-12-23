@@ -1,0 +1,30 @@
+name: "Check and Build JavaScript frontend"
+on:
+  pull_request:
+    paths:
+      - "**"
+      - "!back/**"
+      - "!.github/**"
+      - ".github/workflows/ci-app.yml"
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+
+      - run: npm ci
+
+      - name: Check and Build frontend
+        run: |
+          npm run lint
+          npm run format:check
+          npm run typecheck
+          npm run test:run
+          npm run build
