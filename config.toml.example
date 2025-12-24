@@ -33,3 +33,29 @@ command = "nvim"
 
 # Font size for terminal (optional, defaults to 14)
 # font_size = 14
+
+# Theme file path (optional, supports Alacritty TOML, Windows Terminal JSON, iTerm2 .itermcolors)
+# Relative paths are resolved from ~/.config/orthrus/
+# theme_file = "themes/gruvbox.toml"
+
+# Or specify colors inline (takes precedence over theme_file):
+# [terminal.color_scheme]
+# background = "#1e1e1e"
+# foreground = "#d4d4d4"
+# cursor = "#d4d4d4"
+# black = "#000000"
+# red = "#cc0000"
+# green = "#00cc00"
+# yellow = "#cccc00"
+# blue = "#0000cc"
+# magenta = "#cc00cc"
+# cyan = "#00cccc"
+# white = "#cccccc"
+# bright_black = "#555555"
+# bright_red = "#ff5555"
+# bright_green = "#55ff55"
+# bright_yellow = "#ffff55"
+# bright_blue = "#5555ff"
+# bright_magenta = "#ff55ff"
+# bright_cyan = "#55ffff"
+# bright_white = "#ffffff"
