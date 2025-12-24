@@ -197,16 +197,25 @@ fn default_auto_start_sphinx() -> bool {
 
 impl DevConfig {
     /// アプリのルートから.orthrus.dev.jsonを読み込む
+    /// カレントディレクトリと親ディレクトリを順に探索
     pub fn load() -> Option<Self> {
-        // カレントディレクトリから探す
-        let config_path = std::env::current_dir().ok()?.join(".orthrus.dev.json");
+        let current_dir = std::env::current_dir().ok()?;
 
-        if !config_path.exists() {
-            return None;
+        // カレントディレクトリと親ディレクトリを順に探索
+        // （Tauri devモードではback/から実行されるため）
+        let mut candidates = vec![current_dir.join(".orthrus.dev.json")];
+        if let Some(parent) = current_dir.parent() {
+            candidates.push(parent.join(".orthrus.dev.json"));
         }
 
-        let content = std::fs::read_to_string(&config_path).ok()?;
-        serde_json::from_str(&content).ok()
+        for config_path in &candidates {
+            if config_path.exists() {
+                let content = std::fs::read_to_string(config_path).ok()?;
+                return serde_json::from_str(&content).ok();
+            }
+        }
+
+        None
     }
 }
 
@@ -276,5 +285,38 @@ mod tests {
         let config = Config::load().unwrap();
         assert_eq!(config.sphinx.source_dir, "docs");
         std::env::remove_var("XDG_CONFIG_HOME");
+    }
+
+    #[test]
+    fn test_dev_config_parse_camel_case() {
+        // ユーザーが使用するキャメルケースのJSONをパースできるか確認
+        let json_str = r#"
+        {
+            "projectPath": "/path/to/project",
+            "autoStartSphinx": true,
+            "config": {
+                "terminal": { "shell": "/bin/zsh" }
+            }
+        }
+        "#;
+
+        let dev_config: DevConfig = serde_json::from_str(json_str).unwrap();
+        println!("Parsed DevConfig: {:?}", dev_config);
+
+        // config.terminal.shell が正しく読み込まれているか確認
+        assert!(
+            dev_config.config.is_some(),
+            "config should be parsed"
+        );
+        let config = dev_config.config.unwrap();
+        assert!(
+            config.terminal.is_some(),
+            "terminal config should be parsed"
+        );
+        assert_eq!(
+            config.terminal.unwrap().shell,
+            Some("/bin/zsh".to_string()),
+            "shell should be /bin/zsh"
+        );
     }
 }
