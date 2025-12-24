@@ -10,6 +10,8 @@ pub struct Config {
     pub python: PythonConfig,
     #[serde(default)]
     pub editor: EditorConfig,
+    #[serde(default)]
+    pub terminal: TerminalConfig,
 }
 
 /// Sphinx関連設定
@@ -45,6 +47,14 @@ pub struct PythonConfig {
 pub struct EditorConfig {
     #[serde(default = "default_editor")]
     pub command: String,
+}
+
+/// ターミナル設定
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct TerminalConfig {
+    /// シェルパス (None = $SHELL から自動検出)
+    #[serde(default)]
+    pub shell: Option<String>,
 }
 
 // デフォルト値関数
@@ -112,11 +122,7 @@ impl Config {
     fn config_path() -> PathBuf {
         let config_dir = std::env::var("XDG_CONFIG_HOME")
             .map(PathBuf::from)
-            .unwrap_or_else(|_| {
-                dirs::home_dir()
-                    .unwrap_or_default()
-                    .join(".config")
-            });
+            .unwrap_or_else(|_| dirs::home_dir().unwrap_or_default().join(".config"));
 
         config_dir.join("orthrus").join("config.toml")
     }
@@ -145,6 +151,8 @@ pub struct ConfigOverride {
     pub python: Option<PythonConfigOverride>,
     #[serde(default)]
     pub editor: Option<EditorConfigOverride>,
+    #[serde(default)]
+    pub terminal: Option<TerminalConfigOverride>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -175,6 +183,12 @@ pub struct PythonConfigOverride {
 pub struct EditorConfigOverride {
     #[serde(default)]
     pub command: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct TerminalConfigOverride {
+    #[serde(default)]
+    pub shell: Option<String>,
 }
 
 fn default_auto_start_sphinx() -> bool {
@@ -208,6 +222,7 @@ mod tests {
         assert_eq!(config.sphinx.server.port, 0);
         assert_eq!(config.python.interpreter, "python");
         assert_eq!(config.editor.command, "nvim");
+        assert!(config.terminal.shell.is_none());
     }
 
     #[test]
@@ -238,6 +253,9 @@ mod tests {
 
             [editor]
             command = "vim"
+
+            [terminal]
+            shell = "/opt/homebrew/bin/fish"
         "#;
         let config: Config = toml::from_str(toml_str).unwrap();
         assert_eq!(config.sphinx.source_dir, "docs/source");
@@ -245,6 +263,10 @@ mod tests {
         assert_eq!(config.sphinx.server.port, 8080);
         assert_eq!(config.python.interpreter, ".venv/bin/python");
         assert_eq!(config.editor.command, "vim");
+        assert_eq!(
+            config.terminal.shell,
+            Some("/opt/homebrew/bin/fish".to_string())
+        );
     }
 
     #[test]
