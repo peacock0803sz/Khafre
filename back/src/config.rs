@@ -55,6 +55,12 @@ pub struct TerminalConfig {
     /// シェルパス (None = $SHELL から自動検出)
     #[serde(default)]
     pub shell: Option<String>,
+    /// フォントファミリー
+    #[serde(default)]
+    pub font_family: Option<String>,
+    /// フォントサイズ
+    #[serde(default)]
+    pub font_size: Option<u16>,
 }
 
 // デフォルト値関数
@@ -189,6 +195,10 @@ pub struct EditorConfigOverride {
 pub struct TerminalConfigOverride {
     #[serde(default)]
     pub shell: Option<String>,
+    #[serde(default)]
+    pub font_family: Option<String>,
+    #[serde(default)]
+    pub font_size: Option<u16>,
 }
 
 fn default_auto_start_sphinx() -> bool {

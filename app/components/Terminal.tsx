@@ -6,14 +6,20 @@ import { listen, UnlistenFn } from "@tauri-apps/api/event";
 import { logger } from "../utils/logger";
 import "@xterm/xterm/css/xterm.css";
 
+// デフォルトフォント設定
+const DEFAULT_FONT_FAMILY = 'Menlo, Monaco, "Courier New", monospace';
+const DEFAULT_FONT_SIZE = 14;
+
 interface TerminalProps {
   sessionId: string;
   cwd?: string;
   shell?: string;
+  fontFamily?: string;
+  fontSize?: number;
   onExit?: (code: number) => void;
 }
 
-export function Terminal({ sessionId, cwd, shell, onExit }: TerminalProps) {
+export function Terminal({ sessionId, cwd, shell, fontFamily, fontSize, onExit }: TerminalProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const terminalRef = useRef<XTerm | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
@@ -58,8 +64,8 @@ export function Terminal({ sessionId, cwd, shell, onExit }: TerminalProps) {
     // xterm.js初期化
     const terminal = new XTerm({
       cursorBlink: true,
-      fontSize: 14,
-      fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+      fontSize: fontSize ?? DEFAULT_FONT_SIZE,
+      fontFamily: fontFamily ?? DEFAULT_FONT_FAMILY,
       scrollback: 10000,
       theme: {
         background: "#1e1e1e",

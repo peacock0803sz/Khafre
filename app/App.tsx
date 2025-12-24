@@ -136,6 +136,8 @@ function App() {
                   sessionId={sessionId}
                   cwd={projectPath}
                   shell={effectiveConfig?.terminal.shell}
+                  fontFamily={effectiveConfig?.terminal.font_family}
+                  fontSize={effectiveConfig?.terminal.font_size}
                   onExit={handleExit}
                 />
               ) : (

@@ -18,6 +18,8 @@ export type ConfigOverride = {
   };
   terminal?: {
     shell?: string;
+    font_family?: string;
+    font_size?: number;
   };
 };
 
@@ -55,6 +57,8 @@ export function mergeConfig(
     },
     terminal: {
       shell: override.terminal?.shell ?? base.terminal.shell,
+      font_family: override.terminal?.font_family ?? base.terminal.font_family,
+      font_size: override.terminal?.font_size ?? base.terminal.font_size,
     },
   };
 }

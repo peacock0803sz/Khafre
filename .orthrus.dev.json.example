@@ -11,7 +11,9 @@
       "interpreter": ".venv/bin/python"
     },
     "terminal": {
-      "shell": "/opt/homebrew/bin/fish"
+      "shell": "/opt/homebrew/bin/fish",
+      "font_family": "JetBrains Mono, Menlo, monospace",
+      "font_size": 14
     }
   }
 }

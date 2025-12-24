@@ -24,6 +24,8 @@ export interface EditorConfig {
 /** ターミナル設定 */
 export interface TerminalConfig {
   shell?: string;
+  font_family?: string;
+  font_size?: number;
 }
 
 /** プロジェクト設定全体 */
