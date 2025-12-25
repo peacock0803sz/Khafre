@@ -85,7 +85,12 @@ function App() {
         </span>
         <div className="flex items-center gap-4">
           {configLoading && <span className="text-yellow-400 text-xs">Loading...</span>}
-          {sphinxRunning && <span className="text-green-400 text-xs">Preview Running</span>}
+          {sphinxRunning && !previewUrl && (
+            <span className="text-yellow-400 text-xs">Building...</span>
+          )}
+          {sphinxRunning && previewUrl && (
+            <span className="text-green-400 text-xs">Preview Running</span>
+          )}
           {sphinxError && (
             <span className="text-red-400 text-xs truncate max-w-xs">{sphinxError}</span>
           )}
@@ -126,7 +131,7 @@ function App() {
         <SplitView
           left={
             <Pane>
-              <Preview url={previewUrl} />
+              <Preview url={previewUrl} isBuilding={sphinxRunning && !previewUrl} />
             </Pane>
           }
           right={

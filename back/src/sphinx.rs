@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::io::{BufRead, BufReader};
 use std::net::TcpListener;
 use std::process::{Child, Command, Stdio};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use tauri::{AppHandle, Emitter};
@@ -10,6 +11,8 @@ use tauri::{AppHandle, Emitter};
 pub struct SphinxProcess {
     child: Child,
     port: u16,
+    /// 停止フラグ（ポーリングスレッド終了用）
+    stopped: Arc<AtomicBool>,
 }
 
 /// Sphinxプロセスマネージャ
@@ -57,6 +60,21 @@ impl SphinxManager {
             requested_port
         };
 
+        // python_pathが相対パスの場合、project_pathを基準に解決
+        let resolved_python_path = if std::path::Path::new(&python_path).is_relative() {
+            let full_path = std::path::Path::new(&project_path).join(&python_path);
+            if !full_path.exists() {
+                return Err(format!(
+                    "Pythonインタプリタが見つかりません: {} (プロジェクト: {})",
+                    full_path.display(),
+                    project_path
+                ));
+            }
+            full_path.to_string_lossy().to_string()
+        } else {
+            python_path.clone()
+        };
+
         let source_path = std::path::Path::new(&project_path).join(&source_dir);
         let build_path = std::path::Path::new(&project_path).join(&build_dir);
 
@@ -70,19 +88,23 @@ impl SphinxManager {
             port.to_string(),
             "--host".to_string(),
             "127.0.0.1".to_string(),
-            "--open-browser=false".to_string(),
         ];
         // 追加引数をマージ
         args.extend(extra_args);
 
         // sphinx-autobuildを起動
-        let mut child = Command::new(&python_path)
+        let mut child = Command::new(&resolved_python_path)
             .args(&args)
             .current_dir(&project_path)
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .spawn()
-            .map_err(|e| format!("sphinx-autobuildの起動に失敗: {}", e))?;
+            .map_err(|e| {
+                format!(
+                    "sphinx-autobuildの起動に失敗: {} (Python: {}, 作業ディレクトリ: {})",
+                    e, resolved_python_path, project_path
+                )
+            })?;
 
         // stderrを監視してビルドイベントを通知
         let stderr = child.stderr.take();
@@ -105,11 +127,39 @@ impl SphinxManager {
             });
         }
 
-        let process = SphinxProcess { child, port };
-        self.processes.insert(session_id.clone(), process);
+        // 停止フラグを作成
+        let stopped = Arc::new(AtomicBool::new(false));
+        let stopped_poll = Arc::clone(&stopped);
 
-        // サーバー起動を通知
-        let _ = app_handle.emit("sphinx_started", (&session_id, port));
+        // サーバー起動をポーリングで検出（ポートへの接続を試みる）
+        let sid_poll = session_id.clone();
+        let handle_poll = app_handle.clone();
+        let poll_port = port;
+        thread::spawn(move || {
+            use std::net::TcpStream;
+            use std::time::Duration;
+
+            let addr = format!("127.0.0.1:{}", poll_port);
+            // 停止されるまで1秒ごとにポーリング
+            loop {
+                // 停止フラグをチェック
+                if stopped_poll.load(Ordering::Relaxed) {
+                    return;
+                }
+                thread::sleep(Duration::from_secs(1));
+                if TcpStream::connect(&addr).is_ok() {
+                    let _ = handle_poll.emit("sphinx_started", (&sid_poll, poll_port));
+                    return;
+                }
+            }
+        });
+
+        let process = SphinxProcess {
+            child,
+            port,
+            stopped,
+        };
+        self.processes.insert(session_id.clone(), process);
 
         Ok(port)
     }
@@ -117,10 +167,17 @@ impl SphinxManager {
     /// sphinx-autobuildを停止
     pub fn stop(&mut self, session_id: &str) -> Result<(), String> {
         if let Some(mut process) = self.processes.remove(session_id) {
-            process
-                .child
-                .kill()
-                .map_err(|e| format!("プロセスの停止に失敗: {}", e))?;
+            // ポーリングスレッドに停止を通知
+            process.stopped.store(true, Ordering::Relaxed);
+            // プロセスをkill
+            if let Err(e) = process.child.kill() {
+                // 既に終了している場合はエラーを無視
+                if e.kind() != std::io::ErrorKind::InvalidInput {
+                    return Err(format!("プロセスの停止に失敗: {}", e));
+                }
+            }
+            // 確実に終了を待機（ゾンビプロセス防止）
+            let _ = process.child.wait();
         }
         Ok(())
     }
@@ -141,7 +198,9 @@ impl Drop for SphinxManager {
     fn drop(&mut self) {
         // 全プロセスを停止
         for (_, mut process) in self.processes.drain() {
+            process.stopped.store(true, Ordering::Relaxed);
             let _ = process.child.kill();
+            let _ = process.child.wait();
         }
     }
 }

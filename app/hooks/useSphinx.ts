@@ -36,7 +36,8 @@ export function useSphinx({ sessionId, projectPath, config }: UseSphinxOptions):
 
     try {
       setError(null);
-      const assignedPort = await invoke<number>("start_sphinx", {
+      // プロセス起動のみ、ポート設定はsphinx_startedイベントで行う
+      await invoke<number>("start_sphinx", {
         sessionId,
         projectPath,
         sourceDir: config.sphinx.source_dir,
@@ -45,7 +46,7 @@ export function useSphinx({ sessionId, projectPath, config }: UseSphinxOptions):
         port: config.sphinx.server.port,
         extraArgs: config.sphinx.extra_args,
       });
-      setPort(assignedPort);
+      // ビルド中状態（ポートはまだ設定しない）
       setIsRunning(true);
     } catch (e) {
       setError(String(e));
