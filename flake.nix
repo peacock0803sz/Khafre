@@ -32,6 +32,9 @@
 
             # Tauri CLI
             cargo-tauri
+
+            # macOS DMG creation
+            create-dmg
           ];
         };
       };

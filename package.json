@@ -8,7 +8,7 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "tauri:dev": "tauri dev --config ./back/tauri.conf.json",
-    "tauri:build": "tauri build --config ./back/tauri.conf.json",
+    "tauri:build": "tauri build --config ./back/tauri.conf.json --config ./back/tauri.build.json",
     "typecheck": "tsc --noEmit",
     "lint": "oxlint app/",
     "lint:fix": "oxlint --fix app/",
