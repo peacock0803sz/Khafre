@@ -1,4 +1,4 @@
-# Orthrus
+# Khafre
 
 Sphinx documentation editor with live preview and embedded terminal.
 
@@ -7,7 +7,7 @@ Sphinx documentation editor with live preview and embedded terminal.
 - Live preview with sphinx-autobuild
 - Embedded terminal (Neovim integration)
 - Split-pane layout (preview + editor)
-- Per-project configuration (`.orthrus.toml`)
+- Per-project configuration (`.khafre.toml`)
 
 ## Technology Stack
 
@@ -20,7 +20,7 @@ Sphinx documentation editor with live preview and embedded terminal.
 ## Project Structure
 
 ```
-orthrus/
+khafre/
 ├── back/           # Rust backend (Tauri)
 │   ├── src/
 │   └── tauri.conf.json
@@ -58,7 +58,7 @@ npm run tauri build  # Build Tauri app
 
 ## Configuration
 
-Projects using Orthrus place `.orthrus.toml` in their root:
+Projects using Khafre place `.khafre.toml` in their root:
 
 ```toml
 [sphinx]

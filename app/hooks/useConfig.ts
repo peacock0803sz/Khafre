@@ -11,7 +11,7 @@ interface UseConfigResult {
 
 /**
  * グローバル設定を読み込むhook
- * $XDG_CONFIG_HOME/orthrus/config.toml から設定を読み込む
+ * $XDG_CONFIG_HOME/khafre/config.toml から設定を読み込む
  */
 export function useConfig(): UseConfigResult {
   const [config, setConfig] = useState<ProjectConfig | null>(null);

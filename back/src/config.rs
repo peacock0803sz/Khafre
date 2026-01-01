@@ -145,7 +145,7 @@ impl TerminalConfig {
 }
 
 impl Config {
-    /// XDG_CONFIG_HOME/orthrus/config.toml から設定を読み込む
+    /// XDG_CONFIG_HOME/khafre/config.toml から設定を読み込む
     /// 設定ファイルが存在しない場合はデフォルト値を返す
     pub fn load() -> Result<Self, String> {
         let config_path = Self::config_path();
@@ -161,13 +161,13 @@ impl Config {
     }
 
     /// 設定ファイルのパスを取得
-    /// XDG_CONFIG_HOME/orthrus/config.toml または ~/.config/orthrus/config.toml
+    /// XDG_CONFIG_HOME/khafre/config.toml または ~/.config/khafre/config.toml
     fn config_path() -> PathBuf {
         let config_dir = std::env::var("XDG_CONFIG_HOME")
             .map(PathBuf::from)
             .unwrap_or_else(|_| dirs::home_dir().unwrap_or_default().join(".config"));
 
-        config_dir.join("orthrus").join("config.toml")
+        config_dir.join("khafre").join("config.toml")
     }
 }
 
@@ -274,16 +274,16 @@ fn default_auto_start_sphinx() -> bool {
 }
 
 impl DevConfig {
-    /// アプリのルートから.orthrus.dev.jsonを読み込む
+    /// アプリのルートから.khafre.dev.jsonを読み込む
     /// カレントディレクトリと親ディレクトリを順に探索
     pub fn load() -> Option<Self> {
         let current_dir = std::env::current_dir().ok()?;
 
         // カレントディレクトリと親ディレクトリを順に探索
         // （Tauri devモードではback/から実行されるため）
-        let mut candidates = vec![current_dir.join(".orthrus.dev.json")];
+        let mut candidates = vec![current_dir.join(".khafre.dev.json")];
         if let Some(parent) = current_dir.parent() {
-            candidates.push(parent.join(".orthrus.dev.json"));
+            candidates.push(parent.join(".khafre.dev.json"));
         }
 
         for config_path in &candidates {

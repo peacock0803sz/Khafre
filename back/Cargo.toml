@@ -1,12 +1,12 @@
 [package]
-name = "orthrus"
+name = "khafre"
 version = "0.1.0"
 description = "Sphinx documentation editor with live preview"
 authors = ["peacock0803sz"]
 edition = "2021"
 
 [lib]
-name = "orthrus_lib"
+name = "khafre_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]

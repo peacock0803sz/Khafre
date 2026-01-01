@@ -25,7 +25,7 @@ export type ConfigOverride = {
   };
 };
 
-/** ローカル開発用設定 (.orthrus.dev.json) */
+/** ローカル開発用設定 (.khafre.dev.json) */
 export interface DevConfig {
   /** デフォルトで開くプロジェクトパス */
   project_path?: string;

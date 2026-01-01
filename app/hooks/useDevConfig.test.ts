@@ -46,7 +46,7 @@ describe("useDevConfig", () => {
     expect(invoke).toHaveBeenCalledWith("load_dev_config");
   });
 
-  it("should handle null config (no .orthrus.dev.json)", async () => {
+  it("should handle null config (no .khafre.dev.json)", async () => {
     vi.mocked(invoke).mockResolvedValue(null);
 
     const { result } = renderHook(() => useDevConfig());

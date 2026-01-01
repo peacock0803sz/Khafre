@@ -1,5 +1,5 @@
 {
-  description = "Orthrus - Sphinx documentation Editor with live preview";
+  description = "Khafre - Sphinx documentation Editor with live preview";
 
   inputs = {
     flake-parts.url = "github:hercules-ci/flake-parts";

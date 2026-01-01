@@ -1,6 +1,6 @@
-# Orthrus Global Configuration
-# Place this file at $XDG_CONFIG_HOME/orthrus/config.toml
-# (usually ~/.config/orthrus/config.toml)
+# Khafre Global Configuration
+# Place this file at $XDG_CONFIG_HOME/khafre/config.toml
+# (usually ~/.config/khafre/config.toml)
 
 [sphinx]
 # Source directory relative to project root
@@ -35,7 +35,7 @@ command = "nvim"
 # font_size = 14
 
 # Theme file path (optional, supports Alacritty TOML, Windows Terminal JSON, iTerm2 .itermcolors)
-# Relative paths are resolved from ~/.config/orthrus/
+# Relative paths are resolved from ~/.config/khafre/
 # theme_file = "themes/gruvbox.toml"
 
 # Or specify colors inline (takes precedence over theme_file):

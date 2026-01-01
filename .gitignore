@@ -24,4 +24,4 @@ dist-ssr
 *.sw?
 
 # Local development config
-.orthrus.dev.json
+.khafre.dev.json

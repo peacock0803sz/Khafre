@@ -4,7 +4,7 @@ import type { DevConfig } from "../types/devConfig";
 
 /**
  * ローカル開発用設定を読み込むhook
- * .orthrus.dev.json が存在する場合のみ設定を返す
+ * .khafre.dev.json が存在する場合のみ設定を返す
  */
 export function useDevConfig() {
   const [devConfig, setDevConfig] = useState<DevConfig | null>(null);

@@ -64,7 +64,7 @@ fn load_config() -> Result<Config, String> {
     // テーマファイルがある場合は解決（設定ファイルの場所を基準に）
     let config_dir = dirs::config_dir()
         .unwrap_or_default()
-        .join("orthrus");
+        .join("khafre");
     config.terminal.resolve_color_scheme(Some(&config_dir));
     Ok(config)
 }

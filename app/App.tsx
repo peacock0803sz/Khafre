@@ -78,7 +78,7 @@ function App() {
     <main className="h-screen w-screen flex flex-col bg-gray-900">
       <header className="h-8 bg-gray-800 flex items-center justify-between px-4 text-gray-300 text-sm shrink-0">
         <span className="flex items-center gap-2">
-          Orthrus
+          Khafre
           {projectPath && (
             <span className="text-gray-500 text-xs truncate max-w-md">{projectPath}</span>
           )}
