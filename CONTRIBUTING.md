@@ -79,7 +79,7 @@ npm run tauri build  # Build Tauri app
 
 ## Commit Convention
 
-Use emoji prefix:
+Use emoji prefix (see `./.gitmessage`):
 
 - `:sparkles:` - New feature (small)
 - `:tada:` - New feature (large) / Initial commit
