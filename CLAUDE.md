@@ -16,16 +16,7 @@ Use emoji prefix (see `~/.config/git/commit-template`):
 
 ## Testing Rules
 
-### Rust (back/)
-
-- Use standard `#[cfg(test)]` modules
-- Place tests in the same file as implementation
-
-### TypeScript (app/)
-
-- Use Vitest
-- Place test files next to source: `*.test.ts`
-- Example: `useSphinx.ts` -> `useSphinx.test.ts`
+See [CONTRIBUTING.md](CONTRIBUTING.md#testing) for details.
 
 ## Architecture Notes
 
