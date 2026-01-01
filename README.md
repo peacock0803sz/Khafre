@@ -9,56 +9,19 @@ Sphinx documentation editor with live preview and embedded terminal.
 - Split-pane layout (preview + editor)
 - Per-project configuration (`.khafre.toml`)
 
-## Technology Stack
+## Installation
 
-- **Framework**: Tauri v2
-- **Backend**: Rust
-- **Frontend**: TypeScript + React
-- **Terminal**: xterm.js + portable-pty
-- **Styling**: Tailwind CSS v4
+Download the latest release from the [Releases](https://github.com/peacock0803sz/khafre/releases) page.
 
-## Project Structure
+## Usage
 
-```
-khafre/
-├── back/           # Rust backend (Tauri)
-│   ├── src/
-│   └── tauri.conf.json
-├── app/            # TypeScript frontend (React)
-│   ├── components/
-│   ├── hooks/
-│   └── lib/
-├── package.json
-└── vite.config.ts
-```
-
-## Development
-
-### Prerequisites
-
-- Node.js 22+
-- Rust (cargo, rustc)
-- Tauri CLI
-
-### Setup
-
-```bash
-npm install
-npm run tauri dev
-```
-
-### Commands
-
-```bash
-npm run dev          # Start Vite dev server
-npm run tauri dev    # Start Tauri development
-npm run build        # Build for production
-npm run tauri build  # Build Tauri app
-```
+1. Open Khafre
+2. Select a Sphinx project directory
+3. Edit your documentation with live preview
 
 ## Configuration
 
-Projects using Khafre place `.khafre.toml` in their root:
+Place `.khafre.toml` in your project root:
 
 ```toml
 [sphinx]
@@ -74,3 +37,17 @@ interpreter = ".venv/bin/python"
 [editor]
 command = "nvim"
 ```
+
+### Options
+
+| Section | Key | Description |
+|---------|-----|-------------|
+| `sphinx` | `source_dir` | Sphinx source directory |
+| `sphinx` | `build_dir` | Build output directory |
+| `sphinx.server` | `port` | Preview server port (0 = auto) |
+| `python` | `interpreter` | Python interpreter path |
+| `editor` | `command` | Editor command |
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup and guidelines.
