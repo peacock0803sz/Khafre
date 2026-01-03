@@ -121,7 +121,7 @@ impl TerminalManager {
 
         std::thread::spawn(move || {
             let mut buf = [0u8; 4096];
-            let mut processor = Processor::new();
+            let mut processor: Processor = Processor::new();
             loop {
                 match reader.read(&mut buf) {
                     Ok(0) => break, // EOF
