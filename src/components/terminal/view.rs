@@ -1,16 +1,18 @@
 //! Terminal view component
 //!
 //! This component renders the terminal using alacritty_terminal backend.
-//! It uses DOM-based rendering with CSS styling for cells.
+//! Features:
+//! - DOM-based cell rendering with CSS styling
+//! - Mouse selection support
+//! - Scroll support (mouse wheel)
+//! - Resize handling
 
-use std::sync::Arc;
 use std::time::Duration;
 
 use dioxus::prelude::*;
-use tokio::sync::Mutex;
 
-use crate::services::terminal::TerminalManager;
-use crate::state::AppState;
+use super::selection::Selection;
+use crate::state::{use_terminal_resize, AppState};
 use crate::types::color_scheme::ColorScheme;
 use crate::types::terminal::{CellInfo, CursorInfo, CursorShape, TerminalGrid};
 
@@ -20,6 +22,8 @@ pub fn TerminalView() -> Element {
     let app_state = use_context::<AppState>();
     let mut grid = use_signal(TerminalGrid::default);
     let color_scheme = use_signal(ColorScheme::default);
+    let mut selection = use_signal(Selection::default);
+    let resize_terminal = use_terminal_resize();
 
     // Cell dimensions (monospace font metrics)
     let cell_width = 9.0_f64;
@@ -42,7 +46,7 @@ pub fn TerminalView() -> Element {
                 if let Some(ref manager_arc) = *terminal_manager.read() {
                     let manager = manager_arc.lock().await;
                     let new_grid = manager.get_grid();
-                    drop(manager); // Release lock before updating signal
+                    drop(manager);
                     grid.set(new_grid);
                 }
             }
@@ -51,18 +55,95 @@ pub fn TerminalView() -> Element {
 
     let current_grid = grid.read();
     let scheme = color_scheme.read();
+    let current_selection = selection.read();
+
+    // Mouse event handlers for selection
+    let handle_mouse_down = move |e: MouseEvent| {
+        let (row, col) = mouse_to_cell(&e, cell_width, cell_height);
+        selection.write().start_at(row, col);
+    };
+
+    let handle_mouse_move = move |e: MouseEvent| {
+        if selection.read().active {
+            let (row, col) = mouse_to_cell(&e, cell_width, cell_height);
+            selection.write().update_to(row, col);
+        }
+    };
+
+    let handle_mouse_up = {
+        let grid = grid.clone();
+        move |_: MouseEvent| {
+            let mut sel = selection.write();
+            sel.complete();
+
+            // Copy to clipboard if there's a selection
+            if sel.has_selection() {
+                let text = sel.get_text(&grid.read());
+                if !text.is_empty() {
+                    // TODO: Copy to clipboard using system clipboard API
+                    log::debug!("Selected text: {}", text);
+                }
+            }
+        }
+    };
+
+    // Scroll handler
+    let handle_wheel = {
+        let app_state = app_state.clone();
+        move |e: WheelEvent| {
+            let delta = e.delta();
+            let lines = match delta {
+                WheelDelta::Pixels(_, y) => (y / cell_height) as i32,
+                WheelDelta::Lines(_, y) => y as i32,
+                WheelDelta::Pages(_, y) => (y * 24.0) as i32,
+            };
+
+            if let Some(ref manager_arc) = *app_state.terminal_manager.read() {
+                let manager_arc = manager_arc.clone();
+                spawn(async move {
+                    let manager = manager_arc.lock().await;
+                    manager.scroll(-lines);
+                });
+            }
+        }
+    };
+
+    // Keyboard handler
+    let handle_keydown = {
+        let app_state = app_state.clone();
+        move |e: Event<KeyboardData>| {
+            let app_state = app_state.clone();
+
+            // Clear selection on keypress
+            selection.write().clear();
+
+            spawn(async move {
+                let key_data = e.data();
+                let key = key_data.key();
+                let modifiers = key_data.modifiers();
+
+                let bytes = key_to_bytes(&key, modifiers);
+
+                if !bytes.is_empty() {
+                    if let Some(ref manager_arc) = *app_state.terminal_manager.read() {
+                        let mut manager = manager_arc.lock().await;
+                        let _ = manager.write(&bytes);
+                    }
+                }
+            });
+        }
+    };
 
     rsx! {
         div {
             class: "terminal-container",
-            style: "width: 100%; height: 100%; background: {scheme.background.to_css()}; overflow: hidden; position: relative; padding: 4px;",
+            style: "width: 100%; height: 100%; background: {scheme.background.to_css()}; overflow: hidden; position: relative; padding: 4px; user-select: none;",
             tabindex: 0,
-            onkeydown: move |e| {
-                let app_state = app_state.clone();
-                async move {
-                    handle_keydown(e, &app_state).await;
-                }
-            },
+            onkeydown: handle_keydown,
+            onmousedown: handle_mouse_down,
+            onmousemove: handle_mouse_move,
+            onmouseup: handle_mouse_up,
+            onwheel: handle_wheel,
 
             // Terminal content
             div {
@@ -71,7 +152,7 @@ pub fn TerminalView() -> Element {
 
                 // Render rows
                 for row in 0..current_grid.rows {
-                    {render_row(row, &current_grid, &scheme, cell_width)}
+                    {render_row(row, &current_grid, &scheme, &current_selection, cell_width)}
                 }
             }
 
@@ -81,8 +162,26 @@ pub fn TerminalView() -> Element {
     }
 }
 
+/// Convert mouse position to cell coordinates
+fn mouse_to_cell(e: &MouseEvent, cell_width: f64, cell_height: f64) -> (u16, u16) {
+    let coords = e.element_coordinates();
+    let x = (coords.x - 4.0).max(0.0); // Subtract padding
+    let y = coords.y.max(0.0);
+
+    let col = (x / cell_width) as u16;
+    let row = (y / cell_height) as u16;
+
+    (row, col)
+}
+
 /// Render a single row
-fn render_row(row: usize, grid: &TerminalGrid, scheme: &ColorScheme, cell_width: f64) -> Element {
+fn render_row(
+    row: usize,
+    grid: &TerminalGrid,
+    scheme: &ColorScheme,
+    selection: &Selection,
+    cell_width: f64,
+) -> Element {
     let row_cells: Vec<&CellInfo> = grid
         .cells
         .iter()
@@ -96,10 +195,11 @@ fn render_row(row: usize, grid: &TerminalGrid, scheme: &ColorScheme, cell_width:
 
             for col in 0..grid.cols {
                 {
+                    let is_selected = selection.contains(row as u16, col as u16);
                     if let Some(cell) = row_cells.iter().find(|c| c.col as usize == col) {
-                        render_cell(cell, scheme, cell_width)
+                        render_cell(cell, scheme, cell_width, is_selected)
                     } else {
-                        render_empty_cell(scheme, cell_width)
+                        render_empty_cell(scheme, cell_width, is_selected)
                     }
                 }
             }
@@ -108,9 +208,14 @@ fn render_row(row: usize, grid: &TerminalGrid, scheme: &ColorScheme, cell_width:
 }
 
 /// Render a single cell
-fn render_cell(cell: &CellInfo, scheme: &ColorScheme, width: f64) -> Element {
-    let fg = if cell.flags.inverse { &cell.bg } else { &cell.fg };
-    let bg = if cell.flags.inverse { &cell.fg } else { &cell.bg };
+fn render_cell(cell: &CellInfo, scheme: &ColorScheme, width: f64, selected: bool) -> Element {
+    let (fg, bg) = if selected {
+        (&scheme.selection_fg, &scheme.selection_bg)
+    } else if cell.flags.inverse {
+        (&cell.bg, &cell.fg)
+    } else {
+        (&cell.fg, &cell.bg)
+    };
 
     let mut style = format!(
         "width: {}px; color: {}; background: {};",
@@ -150,28 +255,41 @@ fn render_cell(cell: &CellInfo, scheme: &ColorScheme, width: f64) -> Element {
 }
 
 /// Render an empty cell
-fn render_empty_cell(scheme: &ColorScheme, width: f64) -> Element {
+fn render_empty_cell(scheme: &ColorScheme, width: f64, selected: bool) -> Element {
+    let bg = if selected {
+        &scheme.selection_bg
+    } else {
+        &scheme.background
+    };
+
     rsx! {
         span {
-            style: "width: {width}px; background: {scheme.background.to_css()};",
+            style: "width: {width}px; background: {bg.to_css()};",
             " "
         }
     }
 }
 
 /// Render the cursor
-fn render_cursor(cursor: &CursorInfo, scheme: &ColorScheme, cell_width: f64, cell_height: f64) -> Element {
+fn render_cursor(
+    cursor: &CursorInfo,
+    scheme: &ColorScheme,
+    cell_width: f64,
+    cell_height: f64,
+) -> Element {
     if !cursor.visible {
         return rsx! {};
     }
 
-    let left = cursor.col as f64 * cell_width + 4.0; // +4 for padding
+    let left = cursor.col as f64 * cell_width + 4.0;
     let top = cursor.row as f64 * cell_height;
 
     let cursor_style = match cursor.shape {
         CursorShape::Block => format!(
             "width: {}px; height: {}px; background: {};",
-            cell_width, cell_height, scheme.cursor.to_css()
+            cell_width,
+            cell_height,
+            scheme.cursor.to_css()
         ),
         CursorShape::Underline => format!(
             "width: {}px; height: 2px; background: {}; margin-top: {}px;",
@@ -181,31 +299,15 @@ fn render_cursor(cursor: &CursorInfo, scheme: &ColorScheme, cell_width: f64, cel
         ),
         CursorShape::Beam => format!(
             "width: 2px; height: {}px; background: {};",
-            cell_height, scheme.cursor.to_css()
+            cell_height,
+            scheme.cursor.to_css()
         ),
     };
 
     rsx! {
         div {
             class: "cursor",
-            style: "position: absolute; left: {left}px; top: {top}px; {cursor_style} opacity: 0.7;",
-        }
-    }
-}
-
-/// Handle keyboard input
-async fn handle_keydown(e: Event<KeyboardData>, app_state: &AppState) {
-    let key_data = e.data();
-    let key = key_data.key();
-    let modifiers = key_data.modifiers();
-
-    // Convert key to bytes
-    let bytes = key_to_bytes(&key, modifiers);
-
-    if !bytes.is_empty() {
-        if let Some(ref manager_arc) = *app_state.terminal_manager.read() {
-            let mut manager = manager_arc.lock().await;
-            let _ = manager.write(&bytes);
+            style: "position: absolute; left: {left}px; top: {top}px; {cursor_style} opacity: 0.7; pointer-events: none;",
         }
     }
 }
@@ -217,7 +319,6 @@ fn key_to_bytes(key: &Key, modifiers: Modifiers) -> Vec<u8> {
         if let Key::Character(c) = key {
             if let Some(ch) = c.chars().next() {
                 if ch.is_ascii_lowercase() {
-                    // Ctrl+a = 0x01, Ctrl+b = 0x02, etc.
                     return vec![(ch as u8) - b'a' + 1];
                 }
             }
