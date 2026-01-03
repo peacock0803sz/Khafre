@@ -127,9 +127,7 @@ impl TerminalManager {
                     Ok(0) => break, // EOF
                     Ok(n) => {
                         let mut term = term_clone.lock();
-                        for byte in &buf[..n] {
-                            processor.advance(&mut *term, *byte);
-                        }
+                        processor.advance(&mut *term, &buf[..n]);
                     }
                     Err(e) => {
                         log::error!("PTY read error: {}", e);

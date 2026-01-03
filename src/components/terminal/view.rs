@@ -10,7 +10,6 @@
 use std::time::Duration;
 
 use dioxus::prelude::*;
-use dioxus::dioxus_elements::geometry::WheelDelta;
 
 use super::selection::Selection;
 use crate::state::{use_terminal_resize, AppState};
@@ -92,12 +91,9 @@ pub fn TerminalView() -> Element {
     let handle_wheel = {
         let app_state = app_state.clone();
         move |e: WheelEvent| {
-            let delta = e.delta();
-            let lines = match delta {
-                WheelDelta::Pixels(_, y) => (y / cell_height) as i32,
-                WheelDelta::Lines(_, y) => y as i32,
-                WheelDelta::Pages(_, y) => (y * 24.0) as i32,
-            };
+            // Get scroll delta and convert to lines
+            let delta_y = e.data().delta().strip_units().y;
+            let lines = (delta_y / cell_height) as i32;
 
             if let Some(ref manager_arc) = *app_state.terminal_manager.read() {
                 let manager_arc = manager_arc.clone();
