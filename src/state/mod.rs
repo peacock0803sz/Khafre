@@ -10,7 +10,7 @@ use tokio::sync::Mutex;
 use crate::services::terminal::TerminalManager;
 use crate::types::config::Config;
 
-pub use hooks::{use_config_loader, use_sphinx, use_terminal_init, use_terminal_resize};
+pub use hooks::{use_config_loader, use_sphinx, use_terminal_init, use_terminal_resize, start_sphinx, stop_sphinx};
 
 /// Main application state
 #[derive(Clone)]

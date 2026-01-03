@@ -16,11 +16,9 @@ use super::{AppState, SphinxState, SphinxStatus, TerminalState};
 ///
 /// Creates and manages the terminal manager lifecycle.
 pub fn use_terminal_init() {
-    let app_state = use_context::<AppState>();
+    let mut app_state = use_context::<AppState>();
 
     use_effect(move || {
-        let app_state = app_state.clone();
-
         spawn(async move {
             // Don't reinitialize if already exists
             if app_state.terminal_manager.read().is_some() {
@@ -32,6 +30,7 @@ pub fn use_terminal_init() {
             let shell = config
                 .as_ref()
                 .and_then(|c| c.terminal.shell.clone());
+            drop(config);
 
             // Create terminal manager
             match TerminalManager::new(80, 24, shell.as_deref(), None) {
@@ -61,11 +60,9 @@ pub fn use_terminal_init() {
 ///
 /// Loads configuration from disk and updates state.
 pub fn use_config_loader() {
-    let app_state = use_context::<AppState>();
+    let mut app_state = use_context::<AppState>();
 
     use_effect(move || {
-        let app_state = app_state.clone();
-
         spawn(async move {
             match load_config() {
                 Ok(config) => {
@@ -81,16 +78,8 @@ pub fn use_config_loader() {
     });
 }
 
-/// Sphinx manager hook
-///
-/// Provides functions to start/stop Sphinx server.
+/// Sphinx manager hook result
 pub struct UseSphinx {
-    /// Start the Sphinx server
-    pub start: Box<dyn Fn(String, String) + Send + Sync>,
-
-    /// Stop the Sphinx server
-    pub stop: Box<dyn Fn() + Send + Sync>,
-
     /// Get current port
     pub port: Option<u16>,
 
@@ -103,98 +92,97 @@ pub fn use_sphinx() -> UseSphinx {
     let app_state = use_context::<AppState>();
     let sphinx_state = app_state.sphinx.read();
 
-    let start = {
-        let app_state = app_state.clone();
-        Box::new(move |project_path: String, session_id: String| {
-            let app_state = app_state.clone();
-            let project_path = project_path.clone();
-            let session_id = session_id.clone();
-
-            spawn(async move {
-                // Update status to starting
-                app_state.sphinx.set(SphinxState {
-                    port: None,
-                    status: SphinxStatus::Starting,
-                    last_build: None,
-                });
-
-                // Get config
-                let config = app_state.config.read();
-                let config = config.as_ref().cloned().unwrap_or_default();
-
-                // Create Sphinx manager
-                let (mut manager, mut event_rx) = SphinxManager::new();
-
-                // Start server
-                match manager.start(
-                    session_id.clone(),
-                    &project_path,
-                    &config.sphinx.source_dir,
-                    &config.sphinx.build_dir,
-                    &config.python.interpreter,
-                    config.sphinx.server.port,
-                    config.sphinx.extra_args.clone(),
-                ) {
-                    Ok(port) => {
-                        log::info!("Sphinx server starting on port {}", port);
-
-                        // Handle events in background
-                        let app_state_events = app_state.clone();
-                        spawn(async move {
-                            while let Some(event) = event_rx.recv().await {
-                                match event {
-                                    SphinxEvent::Started { port, .. } => {
-                                        app_state_events.sphinx.set(SphinxState {
-                                            port: Some(port),
-                                            status: SphinxStatus::Running,
-                                            last_build: None,
-                                        });
-                                    }
-                                    SphinxEvent::Built { .. } => {
-                                        let mut state = app_state_events.sphinx.read().clone();
-                                        state.status = SphinxStatus::Running;
-                                        state.last_build = Some(chrono_now());
-                                        app_state_events.sphinx.set(state);
-                                    }
-                                    SphinxEvent::Error { message, .. } => {
-                                        let mut state = app_state_events.sphinx.read().clone();
-                                        state.status = SphinxStatus::Error(message);
-                                        app_state_events.sphinx.set(state);
-                                    }
-                                    SphinxEvent::Stopped { .. } => {
-                                        app_state_events.sphinx.set(SphinxState::default());
-                                    }
-                                }
-                            }
-                        });
-                    }
-                    Err(e) => {
-                        log::error!("Failed to start Sphinx server: {}", e);
-                        app_state.sphinx.set(SphinxState {
-                            port: None,
-                            status: SphinxStatus::Error(e.to_string()),
-                            last_build: None,
-                        });
-                    }
-                }
-            });
-        })
-    };
-
-    let stop = {
-        let app_state = app_state.clone();
-        Box::new(move || {
-            app_state.sphinx.set(SphinxState::default());
-            log::info!("Sphinx server stopped");
-        })
-    };
-
     UseSphinx {
-        start,
-        stop,
         port: sphinx_state.port,
         status: sphinx_state.status.clone(),
     }
+}
+
+/// Start Sphinx server
+pub fn start_sphinx(app_state: AppState, project_path: String, session_id: String) {
+    let mut app_state = app_state;
+
+    spawn(async move {
+        // Update status to starting
+        app_state.sphinx.set(SphinxState {
+            port: None,
+            status: SphinxStatus::Starting,
+            last_build: None,
+        });
+
+        // Get config
+        let config = app_state.config.read();
+        let config = config.as_ref().cloned().unwrap_or_default();
+        drop(config);
+
+        let config = app_state.config.read().as_ref().cloned().unwrap_or_default();
+
+        // Create Sphinx manager
+        let (mut manager, mut event_rx) = SphinxManager::new();
+
+        // Start server
+        match manager.start(
+            session_id.clone(),
+            &project_path,
+            &config.sphinx.source_dir,
+            &config.sphinx.build_dir,
+            &config.python.interpreter,
+            config.sphinx.server.port,
+            config.sphinx.extra_args.clone(),
+        ) {
+            Ok(port) => {
+                log::info!("Sphinx server starting on port {}", port);
+
+                // Handle events in background
+                let mut app_state_events = app_state.clone();
+                spawn(async move {
+                    while let Some(event) = event_rx.recv().await {
+                        match event {
+                            SphinxEvent::Started { port, .. } => {
+                                app_state_events.sphinx.set(SphinxState {
+                                    port: Some(port),
+                                    status: SphinxStatus::Running,
+                                    last_build: None,
+                                });
+                            }
+                            SphinxEvent::Built { .. } => {
+                                let state = app_state_events.sphinx.read().clone();
+                                app_state_events.sphinx.set(SphinxState {
+                                    status: SphinxStatus::Running,
+                                    last_build: Some(chrono_now()),
+                                    ..state
+                                });
+                            }
+                            SphinxEvent::Error { message, .. } => {
+                                let state = app_state_events.sphinx.read().clone();
+                                app_state_events.sphinx.set(SphinxState {
+                                    status: SphinxStatus::Error(message),
+                                    ..state
+                                });
+                            }
+                            SphinxEvent::Stopped { .. } => {
+                                app_state_events.sphinx.set(SphinxState::default());
+                            }
+                        }
+                    }
+                });
+            }
+            Err(e) => {
+                log::error!("Failed to start Sphinx server: {}", e);
+                app_state.sphinx.set(SphinxState {
+                    port: None,
+                    status: SphinxStatus::Error(e.to_string()),
+                    last_build: None,
+                });
+            }
+        }
+    });
+}
+
+/// Stop Sphinx server
+pub fn stop_sphinx(mut app_state: AppState) {
+    app_state.sphinx.set(SphinxState::default());
+    log::info!("Sphinx server stopped");
 }
 
 /// Get current timestamp string
@@ -209,10 +197,10 @@ fn chrono_now() -> String {
 
 /// Terminal resize hook
 pub fn use_terminal_resize() -> impl Fn(u16, u16) {
-    let app_state = use_context::<AppState>();
+    let mut app_state = use_context::<AppState>();
 
     move |cols: u16, rows: u16| {
-        let app_state = app_state.clone();
+        let mut app_state = app_state.clone();
 
         spawn(async move {
             if let Some(ref manager_arc) = *app_state.terminal_manager.read() {
@@ -221,10 +209,12 @@ pub fn use_terminal_resize() -> impl Fn(u16, u16) {
                     log::error!("Failed to resize terminal: {}", e);
                 } else {
                     // Update terminal state
-                    let mut state = app_state.terminal.read().clone();
-                    state.cols = cols;
-                    state.rows = rows;
-                    app_state.terminal.set(state);
+                    let state = app_state.terminal.read().clone();
+                    app_state.terminal.set(TerminalState {
+                        cols,
+                        rows,
+                        ..state
+                    });
                 }
             }
         });

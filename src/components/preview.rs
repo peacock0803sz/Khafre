@@ -126,8 +126,6 @@ fn PreviewFrame(port: u16) -> Element {
             iframe {
                 style: "flex: 1; width: 100%; border: none;",
                 src: "{url}",
-                // Sandbox for security, but allow scripts and same-origin
-                sandbox: "allow-scripts allow-same-origin",
             }
         }
     }

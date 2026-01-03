@@ -10,6 +10,7 @@
 use std::time::Duration;
 
 use dioxus::prelude::*;
+use dioxus::events::WheelDelta;
 
 use super::selection::Selection;
 use crate::state::{use_terminal_resize, AppState};

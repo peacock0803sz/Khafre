@@ -7,14 +7,13 @@
 use std::io::{Read, Write};
 use std::sync::Arc;
 
-use alacritty_terminal::event::{Event, EventListener, WindowSize};
-use alacritty_terminal::event_loop::{EventLoop, Msg, Notifier};
+use alacritty_terminal::event::{Event, EventListener};
 use alacritty_terminal::sync::FairMutex;
 use alacritty_terminal::term::test::TermSize;
 use alacritty_terminal::term::{Config as TermConfig, Term};
-use alacritty_terminal::tty::{Options as TtyOptions, Pty};
 use alacritty_terminal::vte::ansi::{Color as AnsiColor, NamedColor};
 use anyhow::Result;
+use portable_pty::{CommandBuilder, NativePtySystem, PtySize, PtySystem};
 use tokio::sync::mpsc;
 
 use crate::types::color_scheme::{ColorScheme, Rgb};
@@ -47,11 +46,11 @@ pub struct TerminalManager {
     /// Terminal state (grid, cursor, etc.)
     term: Arc<FairMutex<Term<ChannelEventListener>>>,
 
-    /// PTY handle
-    pty: Pty,
+    /// PTY writer
+    pty_writer: Box<dyn Write + Send>,
 
-    /// Event loop notifier for sending data to PTY
-    notifier: Notifier,
+    /// PTY reader (wrapped for async reading)
+    pty_reader: Option<Box<dyn Read + Send>>,
 
     /// Event receiver
     event_rx: mpsc::UnboundedReceiver<TerminalEvent>,
@@ -62,6 +61,9 @@ pub struct TerminalManager {
     /// Terminal size
     cols: u16,
     rows: u16,
+
+    /// PTY pair (kept alive)
+    _pty_pair: portable_pty::PtyPair,
 }
 
 impl TerminalManager {
@@ -80,54 +82,78 @@ impl TerminalManager {
 
         // Create terminal size
         let size = TermSize::new(cols as usize, rows as usize);
-        let window_size = WindowSize {
-            num_cols: cols,
-            num_lines: rows,
-            cell_width: 1,
-            cell_height: 1,
-        };
 
         // Create terminal
         let term = Term::new(term_config, &size, event_listener);
-
-        // PTY options
-        let tty_options = TtyOptions {
-            shell: shell.map(|s| s.into()),
-            working_directory: working_directory.map(|s| s.into()),
-            hold: false,
-        };
+        let term = Arc::new(FairMutex::new(term));
 
         // Create PTY
-        let pty = alacritty_terminal::tty::new(&tty_options, window_size, 0)?;
+        let pty_system = NativePtySystem::default();
+        let pty_size = PtySize {
+            rows,
+            cols,
+            pixel_width: 0,
+            pixel_height: 0,
+        };
 
-        // Create event loop
-        let term = Arc::new(FairMutex::new(term));
-        let pty_event_loop = EventLoop::new(
-            Arc::clone(&term),
-            pty.try_clone()?,
-            false,
-            false,
-        )?;
+        let pty_pair = pty_system.openpty(pty_size)?;
 
-        let notifier = Notifier(pty_event_loop.channel());
+        // Build command
+        let shell_cmd = shell.unwrap_or_else(|| {
+            std::env::var("SHELL").unwrap_or_else(|_| "/bin/sh".to_string()).leak()
+        });
 
-        // Spawn event loop in background thread
-        let _event_loop_handle = pty_event_loop.spawn();
+        let mut cmd = CommandBuilder::new(shell_cmd);
+        if let Some(dir) = working_directory {
+            cmd.cwd(dir);
+        }
+
+        // Spawn shell
+        let _child = pty_pair.slave.spawn_command(cmd)?;
+
+        // Get writer and reader
+        let pty_writer = pty_pair.master.take_writer()?;
+        let pty_reader = Some(pty_pair.master.try_clone_reader()?);
+
+        // Start reading from PTY in background
+        let term_clone = Arc::clone(&term);
+        let mut reader = pty_pair.master.try_clone_reader()?;
+
+        std::thread::spawn(move || {
+            let mut buf = [0u8; 4096];
+            loop {
+                match reader.read(&mut buf) {
+                    Ok(0) => break, // EOF
+                    Ok(n) => {
+                        let mut term = term_clone.lock();
+                        for byte in &buf[..n] {
+                            term.advance(*byte);
+                        }
+                    }
+                    Err(e) => {
+                        log::error!("PTY read error: {}", e);
+                        break;
+                    }
+                }
+            }
+        });
 
         Ok(Self {
             term,
-            pty,
-            notifier,
+            pty_writer,
+            pty_reader,
             event_rx,
             color_scheme: ColorScheme::default(),
             cols,
             rows,
+            _pty_pair: pty_pair,
         })
     }
 
     /// Write input data to the terminal
     pub fn write(&mut self, data: &[u8]) -> Result<()> {
-        self.notifier.0.send(Msg::Input(data.into()))?;
+        self.pty_writer.write_all(data)?;
+        self.pty_writer.flush()?;
         Ok(())
     }
 
@@ -137,18 +163,17 @@ impl TerminalManager {
         self.rows = rows;
 
         let size = TermSize::new(cols as usize, rows as usize);
-        let window_size = WindowSize {
-            num_cols: cols,
-            num_lines: rows,
-            cell_width: 1,
-            cell_height: 1,
-        };
 
         // Resize terminal
         self.term.lock().resize(size);
 
         // Resize PTY
-        self.notifier.0.send(Msg::Resize(window_size))?;
+        self._pty_pair.master.resize(PtySize {
+            rows,
+            cols,
+            pixel_width: 0,
+            pixel_height: 0,
+        })?;
 
         Ok(())
     }
@@ -193,11 +218,25 @@ impl TerminalManager {
         let cursor_info = CursorInfo {
             row: cursor.point.line.0 as u16,
             col: cursor.point.column.0 as u16,
-            visible: true, // TODO: handle cursor visibility properly
+            visible: true,
             shape: match content.cursor.shape {
                 alacritty_terminal::vte::ansi::CursorShape::Block => CursorShape::Block,
                 alacritty_terminal::vte::ansi::CursorShape::Underline => CursorShape::Underline,
                 alacritty_terminal::vte::ansi::CursorShape::Beam => CursorShape::Beam,
+                alacritty_terminal::vte::ansi::CursorShape::HollowBlock => CursorShape::Block,
+                alacritty_terminal::vte::ansi::CursorShape::Hidden => {
+                    return TerminalGrid {
+                        cells,
+                        cursor: CursorInfo {
+                            row: cursor.point.line.0 as u16,
+                            col: cursor.point.column.0 as u16,
+                            visible: false,
+                            shape: CursorShape::Block,
+                        },
+                        cols: self.cols as usize,
+                        rows: self.rows as usize,
+                    };
+                }
             },
         };
 
@@ -233,7 +272,7 @@ impl TerminalManager {
                     NamedColor::Foreground => return self.color_scheme.foreground,
                     NamedColor::Background => return self.color_scheme.background,
                     NamedColor::Cursor => return self.color_scheme.cursor,
-                    _ => return self.color_scheme.foreground, // Default for other named colors
+                    _ => return self.color_scheme.foreground,
                 };
                 self.color_scheme.ansi[index]
             }
