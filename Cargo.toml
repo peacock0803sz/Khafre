@@ -1,0 +1,46 @@
+[package]
+name = "khafre"
+version = "0.2.0"
+description = "Sphinx documentation editor with live preview"
+authors = ["peacock0803sz"]
+edition = "2021"
+license = "MIT"
+
+[dependencies]
+# Dioxus Native
+dioxus = { version = "0.6", features = ["desktop"] }
+
+# Terminal emulation
+alacritty_terminal = "0.24"
+
+# PTY management
+portable-pty = "0.9"
+
+# Async runtime
+tokio = { version = "1", features = ["full"] }
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = "0.9"
+
+# Utilities
+dirs = "6"
+rand = "0.9"
+log = "0.4"
+env_logger = "0.11"
+anyhow = "1"
+thiserror = "2"
+uuid = { version = "1", features = ["v4"] }
+
+# Preview WebView (optional)
+wry = { version = "0.47", optional = true }
+
+[features]
+default = ["webview-preview"]
+webview-preview = ["wry"]
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true

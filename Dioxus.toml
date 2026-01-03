@@ -1,0 +1,14 @@
+[application]
+name = "Khafre"
+default_platform = "desktop"
+
+[desktop]
+title = "Khafre - Sphinx Documentation Editor"
+width = 1200
+height = 800
+resizable = true
+decorations = true
+
+[bundle]
+identifier = "net.p3ac0ck.khafre"
+icon = ["public/icon.png"]
