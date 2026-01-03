@@ -8,14 +8,6 @@
 
   outputs = inputs@{ flake-parts, ... }:
     flake-parts.lib.mkFlake { inherit inputs; } {
-      imports = [
-        # To import an internal flake module: ./other.nix
-        # To import an external flake module:
-        #   1. Add foo to inputs
-        #   2. Add foo as a parameter to the outputs function
-        #   3. Add here: foo.flakeModule
-
-      ];
       systems = [ "x86_64-linux" "aarch64-linux" "aarch64-darwin" "x86_64-darwin" ];
       perSystem = { config, self', inputs', pkgs, system, ... }: {
         devShells.default = pkgs.mkShell {
@@ -27,21 +19,33 @@
             rustfmt
             clippy
 
-            # Node.js
-            nodejs_22
+            # Dioxus CLI
+            dioxus-cli
 
-            # Tauri CLI
-            cargo-tauri
-
-            # macOS DMG creation
-            create-dmg
+            # System dependencies
+            pkg-config
+          ] ++ lib.optionals stdenv.isLinux [
+            # Linux-specific dependencies for Dioxus desktop
+            gtk3
+            webkitgtk
+            libsoup_3
+            glib
+          ] ++ lib.optionals stdenv.isDarwin [
+            # macOS-specific
+            darwin.apple_sdk.frameworks.WebKit
+            darwin.apple_sdk.frameworks.Cocoa
           ];
+
+          # Set up library paths for Linux
+          shellHook = pkgs.lib.optionalString pkgs.stdenv.isLinux ''
+            export LD_LIBRARY_PATH="${pkgs.lib.makeLibraryPath [
+              pkgs.gtk3
+              pkgs.webkitgtk
+              pkgs.libsoup_3
+              pkgs.glib
+            ]}:$LD_LIBRARY_PATH"
+          '';
         };
-      };
-      flake = {
-        # The usual flake attributes can be defined here, including system-
-        # agnostic ones like nixosModule and system-enumerating ones, although
-        # those are more easily expressed in perSystem.
       };
     };
 }
