@@ -2,11 +2,10 @@
 
 ## Technology Stack
 
-- **Framework**: Tauri v2
-- **Backend**: Rust
-- **Frontend**: TypeScript + React
-- **Terminal**: xterm.js + portable-pty
-- **Styling**: Tailwind CSS v4
+- **Framework**: Dioxus (Native desktop with WGPU)
+- **Language**: Rust
+- **Terminal**: alacritty_terminal + portable-pty
+- **Async Runtime**: Tokio
 
 ### PTY Management
 
@@ -16,66 +15,66 @@
 
 ### Security
 
-- Session nonce required for all IPC calls (from MVP)
 - iframe preview uses sandbox attribute
 - Dynamic port allocation for sphinx-autobuild
-
-### xterm.js
-
-- Use CanvasAddon (not WebGL) for WKWebView compatibility
-- scrollback limit: 10000 lines
 
 ## Project Structure
 
 ```
 khafre/
-├── back/           # Rust backend (Tauri)
-│   ├── src/
-│   └── tauri.conf.json
-├── app/            # TypeScript frontend (React)
+├── Cargo.toml          # Rust dependencies
+├── Dioxus.toml         # Dioxus configuration
+├── src/
+│   ├── main.rs         # Entry point
+│   ├── app.rs          # Main App component
 │   ├── components/
-│   ├── hooks/
-│   └── lib/
-├── package.json
-└── vite.config.ts
+│   │   ├── terminal/   # Terminal view + selection
+│   │   ├── preview.rs  # Sphinx preview iframe
+│   │   └── layout/     # Split pane layout
+│   ├── services/
+│   │   ├── terminal/   # PTY + alacritty_terminal
+│   │   ├── sphinx.rs   # sphinx-autobuild manager
+│   │   └── config.rs   # Configuration loader
+│   ├── state/          # Dioxus state management
+│   └── types/          # Type definitions
+└── config.toml.example
 ```
 
 ## Development
 
 ### Prerequisites
 
-- Node.js 22+
 - Rust (cargo, rustc)
-- Tauri CLI
+- Dioxus CLI (`cargo install dioxus-cli`)
+- System dependencies:
+  - **Linux**: gtk3, webkitgtk, libsoup3, glib
+  - **macOS**: Xcode Command Line Tools
 
 ### Setup
 
 ```bash
-npm install
-npm run tauri dev
+# With Nix
+nix develop
+
+# Or install Dioxus CLI manually
+cargo install dioxus-cli
 ```
 
 ### Commands
 
 ```bash
-npm run dev          # Start Vite dev server
-npm run tauri dev    # Start Tauri development
-npm run build        # Build for production
-npm run tauri build  # Build Tauri app
+dx serve        # Start development server
+dx build        # Build for production
+cargo test      # Run tests
+cargo clippy    # Run linter
+cargo fmt       # Format code
 ```
 
 ## Testing
 
-### Rust (back/)
-
 - Use standard `#[cfg(test)]` modules
 - Place tests in the same file as implementation
-
-### TypeScript (app/)
-
-- Use Vitest
-- Place test files next to source: `*.test.ts`
-- Example: `useSphinx.ts` -> `useSphinx.test.ts`
+- Example: see `src/components/terminal/selection.rs`
 
 ## Commit Convention
 
