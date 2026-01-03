@@ -8,10 +8,10 @@ license = "MIT"
 
 [dependencies]
 # Dioxus Native
-dioxus = { version = "0.6", features = ["desktop"] }
+dioxus = { version = "0.7", features = ["desktop"] }
 
 # Terminal emulation
-alacritty_terminal = "0.24"
+alacritty_terminal = "0.25"
 
 # PTY management
 portable-pty = "0.9"
@@ -33,13 +33,6 @@ anyhow = "1"
 thiserror = "2"
 uuid = { version = "1", features = ["v4"] }
 open = "5"
-
-# Preview WebView (optional)
-wry = { version = "0.47", optional = true }
-
-[features]
-default = ["webview-preview"]
-webview-preview = ["wry"]
 
 [profile.release]
 lto = true

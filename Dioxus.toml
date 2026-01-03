@@ -11,4 +11,3 @@ decorations = true
 
 [bundle]
 identifier = "net.p3ac0ck.khafre"
-icon = ["public/icon.png"]
