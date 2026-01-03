@@ -7,4 +7,5 @@ mod manager;
 mod pty;
 
 pub use manager::TerminalManager;
+#[allow(unused_imports)]
 pub use pty::PtyManager;

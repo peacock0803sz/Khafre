@@ -17,7 +17,7 @@ use super::{AppState, SphinxState, SphinxStatus, TerminalState};
 /// Creates and manages the terminal manager lifecycle.
 /// Re-creates terminal when project path changes.
 pub fn use_terminal_init() {
-    let mut app_state = use_context::<AppState>();
+    let app_state = use_context::<AppState>();
 
     // Track project path changes to recreate terminal
     let project_path = app_state.project_path.read().clone();
@@ -197,7 +197,7 @@ fn chrono_now() -> String {
 
 /// Terminal resize hook
 pub fn use_terminal_resize() -> impl Fn(u16, u16) {
-    let mut app_state = use_context::<AppState>();
+    let app_state = use_context::<AppState>();
 
     move |cols: u16, rows: u16| {
         let mut app_state = app_state.clone();

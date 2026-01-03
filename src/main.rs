@@ -9,7 +9,6 @@ mod services;
 mod state;
 mod types;
 
-use dioxus::prelude::*;
 
 fn main() {
     env_logger::init();

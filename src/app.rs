@@ -72,9 +72,9 @@ fn use_sphinx_auto_start() {
 /// Header component
 #[component]
 fn Header() -> Element {
-    let mut app_state = use_context::<AppState>();
-    let project_path = app_state.project_path.read();
-    let sphinx_state = app_state.sphinx.read();
+    let app_state = use_context::<AppState>();
+    let project_path = app_state.project_path.read().clone();
+    let sphinx_state = app_state.sphinx.read().clone();
     let config_loaded = app_state.config.read().is_some();
 
     let sphinx_running = matches!(
@@ -83,18 +83,21 @@ fn Header() -> Element {
     );
 
     // Project selection handler
-    let handle_open_project = move |_| {
-        let mut app_state = app_state.clone();
-        spawn(async move {
-            if let Some(path) = rfd::AsyncFileDialog::new()
-                .set_title("Select Sphinx Project Folder")
-                .pick_folder()
-                .await
-            {
-                let path_str = path.path().to_string_lossy().to_string();
-                app_state.project_path.set(Some(path_str));
-            }
-        });
+    let handle_open_project = {
+        let app_state = app_state.clone();
+        move |_| {
+            let mut app_state = app_state.clone();
+            spawn(async move {
+                if let Some(path) = rfd::AsyncFileDialog::new()
+                    .set_title("Select Sphinx Project Folder")
+                    .pick_folder()
+                    .await
+                {
+                    let path_str = path.path().to_string_lossy().to_string();
+                    app_state.project_path.set(Some(path_str));
+                }
+            });
+        }
     };
 
     // Start Sphinx handler
@@ -139,7 +142,7 @@ fn Header() -> Element {
             }
 
             // Project path
-            if let Some(ref path) = *project_path {
+            if let Some(ref path) = project_path {
                 span {
                     style: "font-size: 12px; color: #888; max-width: 400px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;",
                     "{path}"

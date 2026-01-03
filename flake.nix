@@ -30,6 +30,9 @@
             webkitgtk
             libsoup_3
             glib
+            # Wayland dependencies
+            wayland
+            libxkbcommon
           ] ++ lib.optionals stdenv.hostPlatform.isDarwin [
             # macOS-specific - use libiconv for builds
             libiconv
@@ -42,6 +45,8 @@
               pkgs.webkitgtk
               pkgs.libsoup_3
               pkgs.glib
+              pkgs.wayland
+              pkgs.libxkbcommon
             ]}:$LD_LIBRARY_PATH"
           '';
         };

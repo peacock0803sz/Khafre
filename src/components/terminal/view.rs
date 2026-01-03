@@ -23,7 +23,7 @@ pub fn TerminalView() -> Element {
     let mut grid = use_signal(TerminalGrid::default);
     let color_scheme = use_signal(ColorScheme::default);
     let mut selection = use_signal(Selection::default);
-    let resize_terminal = use_terminal_resize();
+    let _resize_terminal = use_terminal_resize();
 
     // Cell dimensions (monospace font metrics)
     let cell_width = 9.0_f64;
