@@ -1,5 +1,7 @@
 //! Application state management
 
+pub mod hooks;
+
 use std::sync::Arc;
 
 use dioxus::prelude::*;
@@ -7,6 +9,8 @@ use tokio::sync::Mutex;
 
 use crate::services::terminal::TerminalManager;
 use crate::types::config::Config;
+
+pub use hooks::{use_config_loader, use_sphinx, use_terminal_init, use_terminal_resize};
 
 /// Main application state
 #[derive(Clone)]
