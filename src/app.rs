@@ -5,7 +5,9 @@ use dioxus::prelude::*;
 use crate::components::layout::SplitView;
 use crate::components::preview::PreviewPane;
 use crate::components::terminal::TerminalView;
-use crate::state::{use_config_loader, use_terminal_init, AppState, SphinxStatus};
+use crate::state::{
+    start_sphinx, stop_sphinx, use_config_loader, use_terminal_init, AppState, SphinxStatus,
+};
 
 /// Main application component
 #[component]
@@ -18,6 +20,9 @@ pub fn App() -> Element {
 
     // Initialize terminal
     use_terminal_init();
+
+    // Auto-start Sphinx when project is selected and config is loaded
+    use_sphinx_auto_start();
 
     rsx! {
         div {
@@ -46,31 +51,178 @@ pub fn App() -> Element {
     }
 }
 
+/// Hook to auto-start Sphinx when conditions are met
+fn use_sphinx_auto_start() {
+    let app_state = use_context::<AppState>();
+
+    use_effect(move || {
+        let config = app_state.config.read();
+        let project_path = app_state.project_path.read();
+        let sphinx_status = app_state.sphinx.read().status.clone();
+
+        // Auto-start if we have config, project path, and Sphinx is stopped
+        if config.is_some() && project_path.is_some() && sphinx_status == SphinxStatus::Stopped {
+            let project_path = project_path.clone().unwrap();
+            let session_id = uuid::Uuid::new_v4().to_string();
+            start_sphinx(app_state.clone(), project_path, session_id);
+        }
+    });
+}
+
 /// Header component
 #[component]
 fn Header() -> Element {
+    let mut app_state = use_context::<AppState>();
+    let project_path = app_state.project_path.read();
+    let sphinx_state = app_state.sphinx.read();
+    let config_loaded = app_state.config.read().is_some();
+
+    let sphinx_running = matches!(
+        sphinx_state.status,
+        SphinxStatus::Running | SphinxStatus::Starting | SphinxStatus::Building
+    );
+
+    // Project selection handler
+    let handle_open_project = move |_| {
+        let mut app_state = app_state.clone();
+        spawn(async move {
+            if let Some(path) = rfd::AsyncFileDialog::new()
+                .set_title("Select Sphinx Project Folder")
+                .pick_folder()
+                .await
+            {
+                let path_str = path.path().to_string_lossy().to_string();
+                app_state.project_path.set(Some(path_str));
+            }
+        });
+    };
+
+    // Start Sphinx handler
+    let handle_start_sphinx = {
+        let app_state = app_state.clone();
+        move |_| {
+            let project_path = app_state.project_path.read().clone();
+            if let Some(path) = project_path {
+                let session_id = uuid::Uuid::new_v4().to_string();
+                start_sphinx(app_state.clone(), path, session_id);
+            }
+        }
+    };
+
+    // Stop Sphinx handler
+    let handle_stop_sphinx = {
+        let app_state = app_state.clone();
+        move |_| {
+            stop_sphinx(app_state.clone());
+        }
+    };
+
+    // Open in browser handler
+    let handle_open_browser = {
+        let port = sphinx_state.port;
+        move |_| {
+            if let Some(port) = port {
+                let url = format!("http://127.0.0.1:{}", port);
+                let _ = open::that(&url);
+            }
+        }
+    };
+
     rsx! {
         header {
-            style: "display: flex; align-items: center; padding: 8px 16px; background: #252526; border-bottom: 1px solid #3c3c3c;",
+            style: "display: flex; align-items: center; padding: 8px 16px; background: #252526; border-bottom: 1px solid #3c3c3c; gap: 16px;",
 
             // Title
-            h1 {
-                style: "margin: 0; font-size: 14px; font-weight: normal; flex: 1;",
-                "Khafre - Sphinx Documentation Editor"
+            span {
+                style: "font-size: 14px; font-weight: 600;",
+                "Khafre"
             }
 
-            // Menu buttons (placeholder)
+            // Project path
+            if let Some(ref path) = *project_path {
+                span {
+                    style: "font-size: 12px; color: #888; max-width: 400px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;",
+                    "{path}"
+                }
+            }
+
+            // Spacer
+            span {
+                style: "flex: 1;",
+            }
+
+            // Status indicators
+            if !config_loaded {
+                span {
+                    style: "font-size: 11px; color: #ffc107;",
+                    "Loading config..."
+                }
+            }
+
+            match &sphinx_state.status {
+                SphinxStatus::Starting => rsx! {
+                    span {
+                        style: "font-size: 11px; color: #ffc107;",
+                        "Starting..."
+                    }
+                },
+                SphinxStatus::Building => rsx! {
+                    span {
+                        style: "font-size: 11px; color: #ffc107;",
+                        "Building..."
+                    }
+                },
+                SphinxStatus::Running => rsx! {
+                    span {
+                        style: "font-size: 11px; color: #4caf50;",
+                        "Preview Ready"
+                    }
+                },
+                SphinxStatus::Error(msg) => rsx! {
+                    span {
+                        style: "font-size: 11px; color: #f44336; max-width: 200px; overflow: hidden; text-overflow: ellipsis;",
+                        title: "{msg}",
+                        "Error"
+                    }
+                },
+                SphinxStatus::Stopped => rsx! {},
+            }
+
+            // Control buttons
             div {
                 style: "display: flex; gap: 8px;",
 
+                // Open Project button
                 button {
-                    style: "padding: 4px 8px; background: transparent; border: 1px solid #3c3c3c; color: #d4d4d4; border-radius: 4px; cursor: pointer; font-size: 12px;",
+                    style: "padding: 4px 12px; background: #0e639c; border: none; color: white; border-radius: 4px; cursor: pointer; font-size: 12px;",
+                    onclick: handle_open_project,
                     "Open Project"
                 }
 
-                button {
-                    style: "padding: 4px 8px; background: transparent; border: 1px solid #3c3c3c; color: #d4d4d4; border-radius: 4px; cursor: pointer; font-size: 12px;",
-                    "Settings"
+                // Start/Stop Sphinx button
+                if project_path.is_some() && config_loaded {
+                    if sphinx_running {
+                        button {
+                            style: "padding: 4px 12px; background: #d32f2f; border: none; color: white; border-radius: 4px; cursor: pointer; font-size: 12px;",
+                            onclick: handle_stop_sphinx,
+                            "Stop Preview"
+                        }
+                    } else {
+                        button {
+                            style: "padding: 4px 12px; background: #388e3c; border: none; color: white; border-radius: 4px; cursor: pointer; font-size: 12px;",
+                            onclick: handle_start_sphinx,
+                            "Start Preview"
+                        }
+                    }
+                }
+
+                // Open in Browser button
+                if sphinx_state.port.is_some() {
+                    button {
+                        style: "padding: 4px 12px; background: transparent; border: 1px solid #3c3c3c; color: #d4d4d4; border-radius: 4px; cursor: pointer; font-size: 12px;",
+                        onclick: handle_open_browser,
+                        "Open in Browser"
+                    }
                 }
             }
         }

@@ -15,25 +15,25 @@ use super::{AppState, SphinxState, SphinxStatus, TerminalState};
 /// Initialize terminal hook
 ///
 /// Creates and manages the terminal manager lifecycle.
+/// Re-creates terminal when project path changes.
 pub fn use_terminal_init() {
     let mut app_state = use_context::<AppState>();
 
-    use_effect(move || {
-        spawn(async move {
-            // Don't reinitialize if already exists
-            if app_state.terminal_manager.read().is_some() {
-                return;
-            }
+    // Track project path changes to recreate terminal
+    let project_path = app_state.project_path.read().clone();
 
+    use_effect(move || {
+        let mut app_state = app_state.clone();
+        let project_path = project_path.clone();
+
+        spawn(async move {
             // Get terminal config
             let config = app_state.config.read();
-            let shell = config
-                .as_ref()
-                .and_then(|c| c.terminal.shell.clone());
+            let shell = config.as_ref().and_then(|c| c.terminal.shell.clone());
             drop(config);
 
-            // Create terminal manager
-            match TerminalManager::new(80, 24, shell.as_deref(), None) {
+            // Create terminal manager with project directory as cwd
+            match TerminalManager::new(80, 24, shell.as_deref(), project_path.as_deref()) {
                 Ok(manager) => {
                     let manager = Arc::new(Mutex::new(manager));
                     app_state.terminal_manager.set(Some(manager));
@@ -46,7 +46,7 @@ pub fn use_terminal_init() {
                         rows: 24,
                     });
 
-                    log::info!("Terminal initialized");
+                    log::info!("Terminal initialized with cwd: {:?}", project_path);
                 }
                 Err(e) => {
                     log::error!("Failed to initialize terminal: {}", e);

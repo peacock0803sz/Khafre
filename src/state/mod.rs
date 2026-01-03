@@ -18,6 +18,9 @@ pub struct AppState {
     /// Application configuration
     pub config: Signal<Option<Config>>,
 
+    /// Current project path
+    pub project_path: Signal<Option<String>>,
+
     /// Sphinx server state
     pub sphinx: Signal<SphinxState>,
 
@@ -32,6 +35,7 @@ impl Default for AppState {
     fn default() -> Self {
         Self {
             config: Signal::new(None),
+            project_path: Signal::new(None),
             sphinx: Signal::new(SphinxState::default()),
             terminal: Signal::new(TerminalState::default()),
             terminal_manager: Signal::new(None),
