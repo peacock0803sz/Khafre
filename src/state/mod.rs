@@ -1,11 +1,15 @@
 //! Application state management
 
-use dioxus::prelude::*;
+use std::sync::Arc;
 
+use dioxus::prelude::*;
+use tokio::sync::Mutex;
+
+use crate::services::terminal::TerminalManager;
 use crate::types::config::Config;
 
 /// Main application state
-#[derive(Clone, Default)]
+#[derive(Clone)]
 pub struct AppState {
     /// Application configuration
     pub config: Signal<Option<Config>>,
@@ -15,6 +19,20 @@ pub struct AppState {
 
     /// Terminal state
     pub terminal: Signal<TerminalState>,
+
+    /// Terminal manager (wrapped in Arc<Mutex> for thread safety)
+    pub terminal_manager: Signal<Option<Arc<Mutex<TerminalManager>>>>,
+}
+
+impl Default for AppState {
+    fn default() -> Self {
+        Self {
+            config: Signal::new(None),
+            sphinx: Signal::new(SphinxState::default()),
+            terminal: Signal::new(TerminalState::default()),
+            terminal_manager: Signal::new(None),
+        }
+    }
 }
 
 /// Sphinx server state
@@ -49,4 +67,20 @@ pub struct TerminalState {
 
     /// Whether terminal is ready
     pub ready: bool,
+
+    /// Terminal dimensions
+    pub cols: u16,
+    pub rows: u16,
+}
+
+impl TerminalState {
+    /// Create a new terminal state with default dimensions
+    pub fn new() -> Self {
+        Self {
+            session_id: None,
+            ready: false,
+            cols: 80,
+            rows: 24,
+        }
+    }
 }
