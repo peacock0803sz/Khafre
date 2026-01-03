@@ -2,6 +2,8 @@
 
 use serde::{Deserialize, Serialize};
 
+use super::color_scheme::ThemePreference;
+
 /// Main application configuration
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct Config {
@@ -20,6 +22,10 @@ pub struct Config {
     /// Terminal configuration
     #[serde(default)]
     pub terminal: TerminalConfig,
+
+    /// Theme preference (system, light, dark)
+    #[serde(default)]
+    pub theme: ThemePreference,
 }
 
 /// Sphinx configuration
@@ -144,4 +150,59 @@ fn default_font_family() -> String {
 
 fn default_font_size() -> u32 {
     14
+}
+
+/// Development configuration (loaded from .khafre.dev.json)
+///
+/// This config is for development-time overrides and is not committed to version control.
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+pub struct DevConfig {
+    /// Override sphinx source directory
+    #[serde(default)]
+    pub sphinx_source_dir: Option<String>,
+
+    /// Override sphinx build directory
+    #[serde(default)]
+    pub sphinx_build_dir: Option<String>,
+
+    /// Override python interpreter path
+    #[serde(default)]
+    pub python_interpreter: Option<String>,
+
+    /// Override shell path
+    #[serde(default)]
+    pub shell: Option<String>,
+
+    /// Override theme preference
+    #[serde(default)]
+    pub theme: Option<ThemePreference>,
+
+    /// Extra sphinx-autobuild arguments
+    #[serde(default)]
+    pub sphinx_extra_args: Option<Vec<String>>,
+}
+
+impl DevConfig {
+    /// Apply dev config overrides to a base config
+    pub fn apply_to(&self, mut config: Config) -> Config {
+        if let Some(ref dir) = self.sphinx_source_dir {
+            config.sphinx.source_dir = dir.clone();
+        }
+        if let Some(ref dir) = self.sphinx_build_dir {
+            config.sphinx.build_dir = dir.clone();
+        }
+        if let Some(ref interpreter) = self.python_interpreter {
+            config.python.interpreter = interpreter.clone();
+        }
+        if let Some(ref shell) = self.shell {
+            config.terminal.shell = Some(shell.clone());
+        }
+        if let Some(theme) = self.theme {
+            config.theme = theme;
+        }
+        if let Some(ref args) = self.sphinx_extra_args {
+            config.sphinx.extra_args = args.clone();
+        }
+        config
+    }
 }

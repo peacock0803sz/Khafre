@@ -21,15 +21,25 @@ use crate::types::terminal::{CellInfo, CursorInfo, CursorShape, TerminalGrid};
 pub fn TerminalView() -> Element {
     let app_state = use_context::<AppState>();
     let mut grid = use_signal(TerminalGrid::default);
-    let color_scheme = use_signal(ColorScheme::default);
     let mut selection = use_signal(Selection::default);
     let _resize_terminal = use_terminal_resize();
 
+    // Get font settings from config or use defaults
+    let (font_family, font_size) = {
+        if let Some(ref config) = *app_state.config.read() {
+            (
+                config.terminal.font_family.clone(),
+                config.terminal.font_size,
+            )
+        } else {
+            ("Menlo".to_string(), 14)
+        }
+    };
+
     // Cell dimensions (monospace font metrics)
-    let cell_width = 9.0_f64;
-    let cell_height = 18.0_f64;
-    let font_size = 14;
-    let font_family = "'Menlo', 'Monaco', 'Courier New', monospace";
+    let cell_width = (font_size as f64) * 0.6;
+    let cell_height = (font_size as f64) * 1.3;
+    let font_family = format!("'{}', 'Monaco', 'Courier New', monospace", font_family);
 
     // Clone the terminal manager signal for use in effect
     let terminal_manager = app_state.terminal_manager.clone();
@@ -54,7 +64,7 @@ pub fn TerminalView() -> Element {
     });
 
     let current_grid = grid.read();
-    let scheme = color_scheme.read();
+    let scheme = app_state.color_scheme.read();
     let current_selection = selection.read();
 
     // Mouse event handlers for selection

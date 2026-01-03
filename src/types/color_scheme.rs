@@ -22,6 +22,7 @@ impl Rgb {
     }
 
     /// Convert to CSS hex string
+    #[allow(dead_code)]
     pub fn to_hex(&self) -> String {
         format!("#{:02x}{:02x}{:02x}", self.r, self.g, self.b)
     }
@@ -51,7 +52,13 @@ pub struct ColorScheme {
 
 impl Default for ColorScheme {
     fn default() -> Self {
-        // Default dark theme (similar to VS Code)
+        Self::dark()
+    }
+}
+
+impl ColorScheme {
+    /// Dark theme (similar to VS Code Dark+)
+    pub fn dark() -> Self {
         Self {
             background: Rgb::new(30, 30, 30),       // #1e1e1e
             foreground: Rgb::new(212, 212, 212),    // #d4d4d4
@@ -80,9 +87,38 @@ impl Default for ColorScheme {
             ],
         }
     }
-}
 
-impl ColorScheme {
+    /// Light theme (similar to VS Code Light+)
+    pub fn light() -> Self {
+        Self {
+            background: Rgb::new(255, 255, 255),    // #ffffff
+            foreground: Rgb::new(0, 0, 0),          // #000000
+            cursor: Rgb::new(0, 0, 0),              // #000000
+            selection_bg: Rgb::new(173, 214, 255),  // #add6ff
+            selection_fg: Rgb::new(0, 0, 0),        // #000000
+            ansi: [
+                // Normal colors
+                Rgb::new(0, 0, 0),         // Black
+                Rgb::new(205, 49, 49),     // Red
+                Rgb::new(0, 135, 0),       // Green
+                Rgb::new(128, 128, 0),     // Yellow
+                Rgb::new(0, 0, 128),       // Blue
+                Rgb::new(128, 0, 128),     // Magenta
+                Rgb::new(0, 135, 135),     // Cyan
+                Rgb::new(128, 128, 128),   // White
+                // Bright colors
+                Rgb::new(102, 102, 102),   // Bright Black
+                Rgb::new(241, 76, 76),     // Bright Red
+                Rgb::new(0, 175, 0),       // Bright Green
+                Rgb::new(175, 135, 0),     // Bright Yellow
+                Rgb::new(36, 114, 200),    // Bright Blue
+                Rgb::new(175, 0, 175),     // Bright Magenta
+                Rgb::new(0, 175, 175),     // Bright Cyan
+                Rgb::new(255, 255, 255),   // Bright White
+            ],
+        }
+    }
+
     /// Resolve an ANSI color index to RGB
     pub fn resolve_ansi(&self, index: u8) -> Rgb {
         if index < 16 {
@@ -109,4 +145,14 @@ impl ColorScheme {
         let gray = index * 10 + 8;
         Rgb::new(gray, gray, gray)
     }
+}
+
+/// Theme preference
+#[derive(Clone, Copy, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum ThemePreference {
+    #[default]
+    System,
+    Light,
+    Dark,
 }

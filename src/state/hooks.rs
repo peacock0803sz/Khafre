@@ -5,9 +5,10 @@ use std::sync::Arc;
 use dioxus::prelude::*;
 use tokio::sync::Mutex;
 
-use crate::services::config::load_config;
+use crate::services::config::load_full_config;
 use crate::services::sphinx::{SphinxEvent, SphinxManager};
 use crate::services::terminal::TerminalManager;
+use crate::services::theme::get_color_scheme;
 use crate::types::config::Config;
 
 use super::{AppState, SphinxState, SphinxStatus, TerminalState};
@@ -59,15 +60,29 @@ pub fn use_terminal_init() {
 /// Load configuration hook
 ///
 /// Loads configuration from disk and updates state.
+/// Also updates color scheme based on theme preference.
+/// Reloads config when project path changes to apply project/dev overrides.
 pub fn use_config_loader() {
-    let mut app_state = use_context::<AppState>();
+    let app_state = use_context::<AppState>();
+    let project_path = app_state.project_path.read().clone();
 
     use_effect(move || {
+        let mut app_state = app_state.clone();
+        let project_path = project_path.clone();
+
         spawn(async move {
-            match load_config() {
+            // Load full config with project and dev overrides
+            let project_path_ref = project_path.as_ref().map(|p| std::path::Path::new(p.as_str()));
+            let result = load_full_config(project_path_ref);
+
+            match result {
                 Ok(config) => {
+                    // Update color scheme based on theme preference
+                    let color_scheme = get_color_scheme(config.theme);
+                    app_state.color_scheme.set(color_scheme);
+
                     app_state.config.set(Some(config));
-                    log::info!("Configuration loaded");
+                    log::info!("Configuration loaded (project: {:?})", project_path);
                 }
                 Err(e) => {
                     log::warn!("Failed to load config, using defaults: {}", e);
@@ -195,28 +210,61 @@ fn chrono_now() -> String {
     format!("{}", duration.as_secs())
 }
 
-/// Terminal resize hook
+/// Terminal resize hook with throttling
+///
+/// Throttles resize calls to prevent excessive resizes during window dragging.
+/// Uses a 100ms debounce delay.
 pub fn use_terminal_resize() -> impl Fn(u16, u16) {
+    use std::sync::atomic::{AtomicU64, Ordering};
+    use std::time::Duration;
+
+    static LAST_RESIZE: AtomicU64 = AtomicU64::new(0);
+    const THROTTLE_MS: u64 = 100;
+
     let app_state = use_context::<AppState>();
 
     move |cols: u16, rows: u16| {
-        let mut app_state = app_state.clone();
+        let app_state = app_state.clone();
+
+        // Check if we should throttle
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_millis() as u64;
+
+        let last = LAST_RESIZE.load(Ordering::Relaxed);
+        if now.saturating_sub(last) < THROTTLE_MS {
+            // Schedule a delayed resize to ensure final size is applied
+            let app_state_delayed = app_state.clone();
+            spawn(async move {
+                tokio::time::sleep(Duration::from_millis(THROTTLE_MS)).await;
+                apply_resize(app_state_delayed, cols, rows).await;
+            });
+            return;
+        }
+
+        LAST_RESIZE.store(now, Ordering::Relaxed);
 
         spawn(async move {
-            if let Some(ref manager_arc) = *app_state.terminal_manager.read() {
-                let mut manager = manager_arc.lock().await;
-                if let Err(e) = manager.resize(cols, rows) {
-                    log::error!("Failed to resize terminal: {}", e);
-                } else {
-                    // Update terminal state
-                    let state = app_state.terminal.read().clone();
-                    app_state.terminal.set(TerminalState {
-                        cols,
-                        rows,
-                        ..state
-                    });
-                }
-            }
+            apply_resize(app_state, cols, rows).await;
         });
+    }
+}
+
+/// Apply resize to terminal
+async fn apply_resize(mut app_state: AppState, cols: u16, rows: u16) {
+    if let Some(ref manager_arc) = *app_state.terminal_manager.read() {
+        let mut manager = manager_arc.lock().await;
+        if let Err(e) = manager.resize(cols, rows) {
+            log::error!("Failed to resize terminal: {}", e);
+        } else {
+            // Update terminal state
+            let state = app_state.terminal.read().clone();
+            app_state.terminal.set(TerminalState {
+                cols,
+                rows,
+                ..state
+            });
+        }
     }
 }
