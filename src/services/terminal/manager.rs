@@ -11,7 +11,7 @@ use alacritty_terminal::event::{Event, EventListener};
 use alacritty_terminal::sync::FairMutex;
 use alacritty_terminal::term::test::TermSize;
 use alacritty_terminal::term::{Config as TermConfig, Term};
-use alacritty_terminal::vte::ansi::{Color as AnsiColor, NamedColor};
+use alacritty_terminal::vte::ansi::{Color as AnsiColor, NamedColor, Processor};
 use anyhow::Result;
 use portable_pty::{CommandBuilder, NativePtySystem, PtySize, PtySystem};
 use tokio::sync::mpsc;
@@ -121,13 +121,14 @@ impl TerminalManager {
 
         std::thread::spawn(move || {
             let mut buf = [0u8; 4096];
+            let mut processor = Processor::new();
             loop {
                 match reader.read(&mut buf) {
                     Ok(0) => break, // EOF
                     Ok(n) => {
                         let mut term = term_clone.lock();
                         for byte in &buf[..n] {
-                            term.advance(*byte);
+                            processor.advance(&mut *term, *byte);
                         }
                     }
                     Err(e) => {
