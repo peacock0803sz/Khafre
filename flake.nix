@@ -24,20 +24,19 @@
 
             # System dependencies
             pkg-config
-          ] ++ lib.optionals stdenv.isLinux [
+          ] ++ lib.optionals stdenv.hostPlatform.isLinux [
             # Linux-specific dependencies for Dioxus desktop
             gtk3
             webkitgtk
             libsoup_3
             glib
-          ] ++ lib.optionals stdenv.isDarwin [
-            # macOS-specific
-            darwin.apple_sdk.frameworks.WebKit
-            darwin.apple_sdk.frameworks.Cocoa
+          ] ++ lib.optionals stdenv.hostPlatform.isDarwin [
+            # macOS-specific - use libiconv for builds
+            libiconv
           ];
 
           # Set up library paths for Linux
-          shellHook = pkgs.lib.optionalString pkgs.stdenv.isLinux ''
+          shellHook = pkgs.lib.optionalString pkgs.stdenv.hostPlatform.isLinux ''
             export LD_LIBRARY_PATH="${pkgs.lib.makeLibraryPath [
               pkgs.gtk3
               pkgs.webkitgtk
